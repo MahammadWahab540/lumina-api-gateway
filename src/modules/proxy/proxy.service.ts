@@ -3,6 +3,8 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { APP_CONFIG } from '../../config/config.constants';
 import { AppConfig } from '../../config/config.types';
 
+import { GatewayClaims } from '../auth/auth.types';
+
 type ServicePrefix = 'auth' | 'ai';
 
 const HOP_BY_HOP_HEADERS = new Set([
@@ -21,7 +23,7 @@ const HOP_BY_HOP_HEADERS = new Set([
 export class ProxyService {
   private readonly logger = new Logger(ProxyService.name);
 
-  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
+  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) { }
 
   forward(request: FastifyRequest, reply: FastifyReply, prefix: ServicePrefix): void {
     const targetBase = this.getTargetBase(prefix);
@@ -90,7 +92,10 @@ export class ProxyService {
       ? upstream.pathname.slice(0, -1)
       : upstream.pathname;
     const normalizedSuffix = suffixPath === '/' ? '' : suffixPath;
-    upstream.pathname = `${basePath}${normalizedSuffix}` || '/';
+
+    // Ensure no double slashes when joining paths
+    const joinedPath = `${basePath}${normalizedSuffix}`.replace(/\/+/g, '/');
+    upstream.pathname = joinedPath || '/';
     upstream.search = queryString ? `?${queryString}` : '';
 
     return upstream.toString();
@@ -103,13 +108,38 @@ export class ProxyService {
     const rewritten: Record<string, unknown> = {};
 
     for (const [header, value] of Object.entries(headers)) {
-      if (HOP_BY_HOP_HEADERS.has(header.toLowerCase()) || header.toLowerCase() === 'host') {
+      const lowerHeader = header.toLowerCase();
+      // Drop hop-by-hop headers, Host, and specifically external security headers to avoid spoofing
+      if (
+        HOP_BY_HOP_HEADERS.has(lowerHeader) ||
+        lowerHeader === 'host' ||
+        lowerHeader === 'x-user-id' ||
+        lowerHeader === 'x-org-id' ||
+        lowerHeader === 'x-user-roles' ||
+        lowerHeader === 'x-user-email'
+      ) {
         continue;
       }
       rewritten[header] = value;
     }
 
     rewritten['x-request-id'] = request.id;
+
+    // Inject authenticated claims if present
+    const claims = (request as unknown as { user?: GatewayClaims }).user;
+    if (claims) {
+      rewritten['x-user-id'] = claims.userId;
+      if (claims.orgId) {
+        rewritten['x-org-id'] = claims.orgId;
+      }
+      if (claims.roles && claims.roles.length > 0) {
+        rewritten['x-user-roles'] = claims.roles.join(',');
+      }
+      if (claims.email) {
+        rewritten['x-user-email'] = claims.email;
+      }
+    }
+
     return rewritten;
   }
 }
