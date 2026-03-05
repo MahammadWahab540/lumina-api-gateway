@@ -58,7 +58,7 @@ async function bootstrap(): Promise<void> {
 
   await fastify.register(helmet);
   await fastify.register(cors, {
-    origin: config.corsOrigins.includes('*') ? true : config.corsOrigins,
+    origin: config.security.allowedOrigins.includes('*') ? true : config.security.allowedOrigins,
     credentials: true,
   });
   await fastify.register(replyFrom, {

@@ -5,7 +5,20 @@ import { AppConfig } from '../../config/config.types';
 
 import { GatewayClaims } from '../auth/auth.types';
 
-type ServicePrefix = 'auth' | 'ai';
+type ServicePrefix =
+  | 'auth'
+  | 'tenant'
+  | 'user'
+  | 'course'
+  | 'enrollment'
+  | 'assignment'
+  | 'skill'
+  | 'ai'
+  | 'gamification'
+  | 'analytics'
+  | 'notification'
+  | 'storage'
+  | 'personalization';
 
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
@@ -68,11 +81,23 @@ export class ProxyService {
   }
 
   private getTargetBase(prefix: ServicePrefix): string {
-    if (prefix === 'auth') {
-      return this.config.services.authServiceUrl;
+    const services = this.config.services;
+    switch (prefix) {
+      case 'auth': return services.authServiceUrl;
+      case 'tenant': return services.tenantServiceUrl;
+      case 'user': return services.userServiceUrl;
+      case 'course': return services.courseServiceUrl;
+      case 'enrollment': return services.enrollmentServiceUrl;
+      case 'assignment': return services.assignmentServiceUrl;
+      case 'skill': return services.skillServiceUrl;
+      case 'ai': return services.aiServiceUrl;
+      case 'gamification': return services.gamificationServiceUrl;
+      case 'analytics': return services.analyticsServiceUrl;
+      case 'notification': return services.notificationServiceUrl;
+      case 'storage': return services.storageServiceUrl;
+      case 'personalization': return services.personalizationServiceUrl;
+      default: return services.authServiceUrl; // Should be unreachable with proper types
     }
-
-    return this.config.services.aiServiceUrl;
   }
 
   private buildTargetUrl(targetBase: string, request: FastifyRequest, prefix: ServicePrefix): string {

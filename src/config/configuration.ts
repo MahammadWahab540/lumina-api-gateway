@@ -14,7 +14,19 @@ const envSchema = z.object({
   SUPABASE_JWT_AUDIENCE: z.string().trim().min(1),
   REDIS_URL: z.string().url(),
   AUTH_SERVICE_URL: z.string().url(),
+  TENANT_SERVICE_URL: z.string().url(),
+  USER_SERVICE_URL: z.string().url(),
+  COURSE_SERVICE_URL: z.string().url(),
+  ENROLLMENT_SERVICE_URL: z.string().url(),
+  ASSIGNMENT_SERVICE_URL: z.string().url(),
+  SKILL_SERVICE_URL: z.string().url(),
   AI_SERVICE_URL: z.string().url(),
+  GAMIFICATION_SERVICE_URL: z.string().url(),
+  ANALYTICS_SERVICE_URL: z.string().url(),
+  NOTIFICATION_SERVICE_URL: z.string().url(),
+  STORAGE_SERVICE_URL: z.string().url(),
+  PERSONALIZATION_SERVICE_URL: z.string().url(),
+  ALLOWED_ORIGINS: z.string().trim().default('*'),
   PROXY_TIMEOUT_MS: z.coerce.number().int().min(100).default(10000),
   RATE_LIMIT_GLOBAL_TTL: z.coerce.number().int().min(100).default(60000),
   RATE_LIMIT_GLOBAL_LIMIT: z.coerce.number().int().min(1).default(120),
@@ -61,6 +73,7 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
 
   const data = parsed.data;
   const corsOrigins = splitCsv(data.CORS_ORIGINS);
+  const allowedOrigins = splitCsv(data.ALLOWED_ORIGINS);
   const publicRoutes = ensureAbsoluteRoutes(splitCsv(data.PUBLIC_ROUTES));
 
   return {
@@ -75,10 +88,24 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
       issuer: data.SUPABASE_JWT_ISSUER,
       audience: data.SUPABASE_JWT_AUDIENCE,
     },
+    security: {
+      allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : ['*'],
+    },
     redisUrl: data.REDIS_URL,
     services: {
       authServiceUrl: data.AUTH_SERVICE_URL,
+      tenantServiceUrl: data.TENANT_SERVICE_URL,
+      userServiceUrl: data.USER_SERVICE_URL,
+      courseServiceUrl: data.COURSE_SERVICE_URL,
+      enrollmentServiceUrl: data.ENROLLMENT_SERVICE_URL,
+      assignmentServiceUrl: data.ASSIGNMENT_SERVICE_URL,
+      skillServiceUrl: data.SKILL_SERVICE_URL,
       aiServiceUrl: data.AI_SERVICE_URL,
+      gamificationServiceUrl: data.GAMIFICATION_SERVICE_URL,
+      analyticsServiceUrl: data.ANALYTICS_SERVICE_URL,
+      notificationServiceUrl: data.NOTIFICATION_SERVICE_URL,
+      storageServiceUrl: data.STORAGE_SERVICE_URL,
+      personalizationServiceUrl: data.PERSONALIZATION_SERVICE_URL,
       proxyTimeoutMs: data.PROXY_TIMEOUT_MS,
     },
     rateLimit: {

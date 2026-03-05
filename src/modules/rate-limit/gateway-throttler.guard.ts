@@ -34,9 +34,9 @@ export class GatewayThrottlerGuard extends ThrottlerGuard {
   protected async getTracker(req: Record<string, unknown>): Promise<string> {
     const xForwardedFor = req.headers && (req.headers as Record<string, unknown>)['x-forwarded-for'];
     if (typeof xForwardedFor === 'string' && xForwardedFor.trim().length > 0) {
-      const firstIp = xForwardedFor.split(',')[0]?.trim();
-      if (firstIp) {
-        return firstIp;
+      const ips = xForwardedFor.split(',').map((ip) => ip.trim()).filter((ip) => ip.length > 0);
+      if (ips.length > 0) {
+        return ips[0];
       }
     }
 

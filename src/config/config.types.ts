@@ -8,7 +8,18 @@ export interface AuthConfig {
 
 export interface ServiceRouteConfig {
   authServiceUrl: string;
+  tenantServiceUrl: string;
+  userServiceUrl: string;
+  courseServiceUrl: string;
+  enrollmentServiceUrl: string;
+  assignmentServiceUrl: string;
+  skillServiceUrl: string;
   aiServiceUrl: string;
+  gamificationServiceUrl: string;
+  analyticsServiceUrl: string;
+  notificationServiceUrl: string;
+  storageServiceUrl: string;
+  personalizationServiceUrl: string;
   proxyTimeoutMs: number;
 }
 
@@ -24,6 +35,10 @@ export interface RateLimitConfig {
   ai: RateLimitBucketConfig;
 }
 
+export interface SecurityConfig {
+  allowedOrigins: string[];
+}
+
 export interface AppConfig {
   nodeEnv: NodeEnv;
   port: number;
@@ -32,6 +47,7 @@ export interface AppConfig {
   corsOrigins: string[];
   publicRoutes: string[];
   auth: AuthConfig;
+  security: SecurityConfig;
   redisUrl: string;
   services: ServiceRouteConfig;
   rateLimit: RateLimitConfig;

@@ -1,0 +1,126 @@
+﻿
+[35m[Region: europe-west4][0m
+[35m=========================
+Using Detected Dockerfile
+=========================
+[0m
+context: z7kx-1S
+[INFO] [internal] load build definition from Dockerfile
+[INFO] [internal] load build definition from Dockerfile
+[INFO] [internal] load build definition from Dockerfile
+[INFO] [internal] load build definition from Dockerfile
+[INFO] [internal] load metadata for docker.io/library/node:20-alpine
+[INFO] [internal] load metadata for docker.io/library/node:20-alpine
+[INFO] [internal] load .dockerignore
+[INFO] [internal] load .dockerignore
+[INFO] [internal] load .dockerignore
+[INFO] [internal] load .dockerignore
+[INFO] [runner 5/5] COPY --from=builder /app/dist ./dist
+[INFO] [builder 4/4] RUN npm run build
+[INFO] [internal] load build context
+[INFO] [internal] load build context
+[INFO] [internal] load build context
+[INFO] [production 2/5] WORKDIR /app
+[INFO] [deps 3/4] COPY package*.json ./
+[INFO] [deps 3/4] COPY package*.json ./
+[INFO] [deps 4/4] RUN npm ci
+[INFO] [runner 4/5] RUN npm ci --omit=dev
+[INFO] npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+
+[INFO] 
+added 162 packages, and audited 163 packages in 3s
+
+[INFO] 
+28 packages are looking for funding
+
+[INFO]   run `npm fund` for details
+
+[INFO] 
+8 vulnerabilities (5 moderate, 3 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+[INFO] npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.11.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.11.0
+npm notice To update run: npm install -g npm@11.11.0
+npm notice
+
+[INFO] npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+[INFO] npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+[INFO] npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+[INFO] npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+[INFO] npm warn deprecated glob@10.4.5: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+[INFO] [runner 4/5] RUN npm ci --omit=dev
+[INFO] 
+added 667 packages, and audited 668 packages in 8s
+
+[INFO] 
+109 packages are looking for funding
+
+[INFO]   run `npm fund` for details
+
+[INFO] 
+18 vulnerabilities (4 low, 9 moderate, 5 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+[INFO] npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.11.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.11.0
+npm notice To update run: npm install -g npm@11.11.0
+npm notice
+
+[INFO] [deps 4/4] RUN npm ci
+[INFO] [builder 1/4] WORKDIR /app
+[INFO] [builder 1/4] WORKDIR /app
+[INFO] [builder 2/4] COPY nest-cli.json tsconfig*.json ./
+[INFO] [builder 2/4] COPY nest-cli.json tsconfig*.json ./
+[INFO] [builder 3/4] COPY src ./src
+[INFO] [builder 3/4] COPY src ./src
+[INFO] [builder 4/4] RUN npm run build
+[INFO] 
+> lumina-api-gateway@1.0.0 build
+> nest build
+
+
+[INFO] [builder 4/4] RUN npm run build
+[INFO] [runner 5/5] COPY --from=builder /app/dist ./dist
+[INFO] [runner 5/5] COPY --from=builder /app/dist ./dist
+[INFO] [auth] sharing credentials for production-europe-west4-drams3a.railway-registry.com
+[INFO] [auth] sharing credentials for production-europe-west4-drams3a.railway-registry.com
+[92mBuild time: 24.89 seconds[0m
+
+[35m====================
+Starting Healthcheck
+====================
+[0m
+[37mPath: /health[0m
+[37mRetry window: 2m0s[0m
+
+[93mAttempt #1 failed with service unavailable. Continuing to retry for 1m49s[0m
+[93mAttempt #2 failed with service unavailable. Continuing to retry for 1m38s[0m
+[93mAttempt #3 failed with service unavailable. Continuing to retry for 1m26s[0m
+[93mAttempt #4 failed with service unavailable. Continuing to retry for 1m11s[0m
+[93mAttempt #5 failed with service unavailable. Continuing to retry for 53s[0m
+[93mAttempt #6 failed with service unavailable. Continuing to retry for 27s[0m
+
+[91m1/1 replicas never became healthy![0m
+[91mHealthcheck failed![0m
