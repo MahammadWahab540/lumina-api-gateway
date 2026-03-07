@@ -61,7 +61,7 @@ export class ProxyService {
 
     from.call(reply, targetUrl, {
       rewriteRequestHeaders: (_req: FastifyRequest, headers: Record<string, unknown>) =>
-        this.rewriteRequestHeaders(headers, request),
+        this.rewriteRequestHeaders(headers, request, prefix),
       onError: (res: FastifyReply, payload: { error: Error }) => {
         const error = payload.error;
         const isTimeout = /timeout|timed out/i.test(error.message);
@@ -131,6 +131,7 @@ export class ProxyService {
   private rewriteRequestHeaders(
     headers: Record<string, unknown>,
     request: FastifyRequest,
+    prefix: ServicePrefix,
   ): Record<string, unknown> {
     const rewritten: Record<string, unknown> = {};
 
@@ -151,6 +152,10 @@ export class ProxyService {
     }
 
     rewritten['x-request-id'] = request.id;
+
+    if (prefix === 'rest' || prefix === 'storage') {
+      rewritten.apikey = this.config.services.supabaseAnonKey;
+    }
 
     // Inject authenticated claims if present
     const claims = (request as unknown as { user?: GatewayClaims }).user;
