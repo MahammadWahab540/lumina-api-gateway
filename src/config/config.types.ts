@@ -18,6 +18,7 @@ export interface ServiceRouteConfig {
   gamificationServiceUrl: string;
   analyticsServiceUrl: string;
   notificationServiceUrl: string;
+  supabaseUrl: string;
   storageServiceUrl: string;
   personalizationServiceUrl: string;
   proxyTimeoutMs: number;

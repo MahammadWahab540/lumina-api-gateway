@@ -16,6 +16,12 @@ function getRoutePrefix(pathname: string): string {
   if (pathname.startsWith('/ai')) {
     return 'ai';
   }
+  if (pathname.startsWith('/rest')) {
+    return 'rest';
+  }
+  if (pathname.startsWith('/storage')) {
+    return 'storage';
+  }
   if (pathname.startsWith('/health')) {
     return 'health';
   }

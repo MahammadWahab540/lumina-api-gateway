@@ -17,6 +17,7 @@ type ServicePrefix =
   | 'gamification'
   | 'analytics'
   | 'notification'
+  | 'rest'
   | 'storage'
   | 'personalization';
 
@@ -94,7 +95,8 @@ export class ProxyService {
       case 'gamification': return services.gamificationServiceUrl;
       case 'analytics': return services.analyticsServiceUrl;
       case 'notification': return services.notificationServiceUrl;
-      case 'storage': return services.storageServiceUrl;
+      case 'rest': return `${services.supabaseUrl}/rest/v1`;
+      case 'storage': return `${services.supabaseUrl}/storage/v1`;
       case 'personalization': return services.personalizationServiceUrl;
       default: return services.authServiceUrl; // Should be unreachable with proper types
     }
