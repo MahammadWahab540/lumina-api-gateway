@@ -56,12 +56,23 @@ describe('ProxyService', () => {
 
   it('builds target urls preserving query string and stripping prefix', () => {
     const request = {
-      raw: { url: '/rest/todos?id=eq.123&select=*' },
-      url: '/rest/todos?id=eq.123&select=*',
+      raw: { url: '/rest/v1/todos?id=eq.123&select=*' },
+      url: '/rest/v1/todos?id=eq.123&select=*',
     } as FastifyRequest;
 
     expect((service as any).buildTargetUrl('https://supabase.example/rest/v1', request, 'rest')).toBe(
       'https://supabase.example/rest/v1/todos?id=eq.123&select=*',
+    );
+  });
+
+  it('builds storage target url stripping /storage/v1 prefix', () => {
+    const request = {
+      raw: { url: '/storage/v1/object/public/bucket/file.png?download=true' },
+      url: '/storage/v1/object/public/bucket/file.png?download=true',
+    } as FastifyRequest;
+
+    expect((service as any).buildTargetUrl('https://supabase.example/storage/v1', request, 'storage')).toBe(
+      'https://supabase.example/storage/v1/object/public/bucket/file.png?download=true',
     );
   });
 
