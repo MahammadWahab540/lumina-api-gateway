@@ -107,6 +107,11 @@ export class ProxyService {
     const [pathPart, queryString] = rawUrl.split('?');
 
     let suffixPath = pathPart.startsWith(`/${prefix}`) ? pathPart.slice(prefix.length + 1) : pathPart;
+
+    if ((prefix === 'rest' || prefix === 'storage') && /^\/v1(?:\/|$)/.test(suffixPath)) {
+      suffixPath = suffixPath.slice(3) || '/';
+    }
+
     if (suffixPath.length === 0) {
       suffixPath = '/';
     }
