@@ -1,5 +1,6 @@
 import { All, Controller, Req, Res } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { Public } from '../auth/public.decorator';
 import { ProxyService } from './proxy.service';
 
 @Controller('auth')
@@ -50,6 +51,12 @@ export class RestProxyController {
 @Controller('storage')
 export class StorageProxyController {
   constructor(private readonly proxyService: ProxyService) {}
+
+  @Public()
+  @All('object/public/:path*')
+  proxyStoragePublic(@Req() request: FastifyRequest, @Res() reply: FastifyReply): void {
+    this.proxyService.forward(request, reply, 'storage');
+  }
 
   @All()
   proxyStorageRoot(@Req() request: FastifyRequest, @Res() reply: FastifyReply): void {

@@ -154,7 +154,7 @@ export class ProxyService {
     rewritten['x-request-id'] = request.id;
 
     if (prefix === 'rest' || prefix === 'storage') {
-      rewritten.apikey = this.config.services.supabaseAnonKey;
+      rewritten['apikey'] = this.config.services.supabaseAnonKey;
     }
 
     // Inject authenticated claims if present

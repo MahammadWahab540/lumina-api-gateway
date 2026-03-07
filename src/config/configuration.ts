@@ -36,9 +36,9 @@ const envSchema = z.object({
   RATE_LIMIT_AI_TTL: z.coerce.number().int().min(100).default(60000),
   RATE_LIMIT_AI_LIMIT: z.coerce.number().int().min(1).default(20),
   RATE_LIMIT_REST_TTL: z.coerce.number().int().min(100).default(60000),
-  RATE_LIMIT_REST_LIMIT: z.coerce.number().int().min(1).default(80),
+  RATE_LIMIT_REST_LIMIT: z.coerce.number().int().min(1).default(60),
   RATE_LIMIT_STORAGE_TTL: z.coerce.number().int().min(100).default(60000),
-  RATE_LIMIT_STORAGE_LIMIT: z.coerce.number().int().min(1).default(60),
+  RATE_LIMIT_STORAGE_LIMIT: z.coerce.number().int().min(1).default(100),
   PUBLIC_ROUTES: z.string().trim().default('/auth/login,/auth/refresh'),
 });
 
