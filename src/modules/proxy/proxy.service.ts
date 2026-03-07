@@ -17,6 +17,7 @@ type ServicePrefix =
   | 'gamification'
   | 'analytics'
   | 'notification'
+  | 'rest'
   | 'storage'
   | 'personalization';
 
@@ -60,7 +61,7 @@ export class ProxyService {
 
     from.call(reply, targetUrl, {
       rewriteRequestHeaders: (_req: FastifyRequest, headers: Record<string, unknown>) =>
-        this.rewriteRequestHeaders(headers, request),
+        this.rewriteRequestHeaders(headers, request, prefix),
       onError: (res: FastifyReply, payload: { error: Error }) => {
         const error = payload.error;
         const isTimeout = /timeout|timed out/i.test(error.message);
@@ -94,7 +95,8 @@ export class ProxyService {
       case 'gamification': return services.gamificationServiceUrl;
       case 'analytics': return services.analyticsServiceUrl;
       case 'notification': return services.notificationServiceUrl;
-      case 'storage': return services.storageServiceUrl;
+      case 'rest': return `${services.supabaseUrl}/rest/v1`;
+      case 'storage': return `${services.supabaseUrl}/storage/v1`;
       case 'personalization': return services.personalizationServiceUrl;
       default: return services.authServiceUrl; // Should be unreachable with proper types
     }
@@ -129,6 +131,7 @@ export class ProxyService {
   private rewriteRequestHeaders(
     headers: Record<string, unknown>,
     request: FastifyRequest,
+    prefix: ServicePrefix,
   ): Record<string, unknown> {
     const rewritten: Record<string, unknown> = {};
 
@@ -149,6 +152,10 @@ export class ProxyService {
     }
 
     rewritten['x-request-id'] = request.id;
+
+    if (prefix === 'rest' || prefix === 'storage') {
+      rewritten['apikey'] = this.config.services.supabaseAnonKey;
+    }
 
     // Inject authenticated claims if present
     const claims = (request as unknown as { user?: GatewayClaims }).user;

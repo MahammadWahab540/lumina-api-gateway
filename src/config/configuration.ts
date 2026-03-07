@@ -24,7 +24,8 @@ const envSchema = z.object({
   GAMIFICATION_SERVICE_URL: z.string().url(),
   ANALYTICS_SERVICE_URL: z.string().url(),
   NOTIFICATION_SERVICE_URL: z.string().url(),
-  STORAGE_SERVICE_URL: z.string().url(),
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_ANON_KEY: z.string().trim().min(1),
   PERSONALIZATION_SERVICE_URL: z.string().url(),
   ALLOWED_ORIGINS: z.string().trim().default('*'),
   PROXY_TIMEOUT_MS: z.coerce.number().int().min(100).default(10000),
@@ -34,6 +35,10 @@ const envSchema = z.object({
   RATE_LIMIT_AUTH_LIMIT: z.coerce.number().int().min(1).default(30),
   RATE_LIMIT_AI_TTL: z.coerce.number().int().min(100).default(60000),
   RATE_LIMIT_AI_LIMIT: z.coerce.number().int().min(1).default(20),
+  RATE_LIMIT_REST_TTL: z.coerce.number().int().min(100).default(60000),
+  RATE_LIMIT_REST_LIMIT: z.coerce.number().int().min(1).default(60),
+  RATE_LIMIT_STORAGE_TTL: z.coerce.number().int().min(100).default(60000),
+  RATE_LIMIT_STORAGE_LIMIT: z.coerce.number().int().min(1).default(100),
   PUBLIC_ROUTES: z.string().trim().default('/auth/login,/auth/refresh'),
 });
 
@@ -104,7 +109,8 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
       gamificationServiceUrl: data.GAMIFICATION_SERVICE_URL,
       analyticsServiceUrl: data.ANALYTICS_SERVICE_URL,
       notificationServiceUrl: data.NOTIFICATION_SERVICE_URL,
-      storageServiceUrl: data.STORAGE_SERVICE_URL,
+      supabaseUrl: data.SUPABASE_URL,
+      supabaseAnonKey: data.SUPABASE_ANON_KEY,
       personalizationServiceUrl: data.PERSONALIZATION_SERVICE_URL,
       proxyTimeoutMs: data.PROXY_TIMEOUT_MS,
     },
@@ -123,6 +129,16 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
         ttlMs: data.RATE_LIMIT_AI_TTL,
         limit: data.RATE_LIMIT_AI_LIMIT,
         blockDurationMs: data.RATE_LIMIT_AI_TTL,
+      },
+      rest: {
+        ttlMs: data.RATE_LIMIT_REST_TTL,
+        limit: data.RATE_LIMIT_REST_LIMIT,
+        blockDurationMs: data.RATE_LIMIT_REST_TTL,
+      },
+      storage: {
+        ttlMs: data.RATE_LIMIT_STORAGE_TTL,
+        limit: data.RATE_LIMIT_STORAGE_LIMIT,
+        blockDurationMs: data.RATE_LIMIT_STORAGE_TTL,
       },
     },
   };

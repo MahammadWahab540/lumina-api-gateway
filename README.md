@@ -4,7 +4,7 @@ NestJS + Fastify API gateway for Lumina Learning Hub.
 
 ## Features
 
-- Prefix proxy routing for `/auth/*` and `/ai/*`
+- Prefix proxy routing for `/auth/*`, `/ai/*`, `/rest/*`, and `/storage/*`
 - JWT validation through Supabase JWKS
 - Protected-by-default routing with configurable public route exceptions
 - Header spoofing scrubbing + trusted claim forwarding
@@ -46,7 +46,8 @@ npm run start:dev
 See [.env.example](./.env.example). Required values include:
 
 - Supabase JWT settings: `SUPABASE_JWKS_URI`, `SUPABASE_JWT_ISSUER`, `SUPABASE_JWT_AUDIENCE`
-- Upstream services: `AUTH_SERVICE_URL`, `AI_SERVICE_URL`
+- Supabase proxy settings: `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+- Upstream services: `AUTH_SERVICE_URL`, `AI_SERVICE_URL`, and other service URLs listed in `.env.example`
 - Redis for throttling: `REDIS_URL`
 - Rate limit controls: `RATE_LIMIT_*`
 - Public exceptions: `PUBLIC_ROUTES`
@@ -56,6 +57,8 @@ See [.env.example](./.env.example). Required values include:
 - `GET /health` - Public health check
 - `ALL /auth/*` - Proxied to `AUTH_SERVICE_URL`
 - `ALL /ai/*` - Proxied to `AI_SERVICE_URL`
+- `ALL /rest/*` - Proxied to `${SUPABASE_URL}/rest/v1`
+- `ALL /storage/*` - Proxied to `${SUPABASE_URL}/storage/v1`
 
 ## Docker
 

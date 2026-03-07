@@ -18,7 +18,8 @@ export interface ServiceRouteConfig {
   gamificationServiceUrl: string;
   analyticsServiceUrl: string;
   notificationServiceUrl: string;
-  storageServiceUrl: string;
+  supabaseUrl: string;
+  supabaseAnonKey: string;
   personalizationServiceUrl: string;
   proxyTimeoutMs: number;
 }
@@ -33,6 +34,8 @@ export interface RateLimitConfig {
   global: RateLimitBucketConfig;
   auth: RateLimitBucketConfig;
   ai: RateLimitBucketConfig;
+  rest: RateLimitBucketConfig;
+  storage: RateLimitBucketConfig;
 }
 
 export interface SecurityConfig {
