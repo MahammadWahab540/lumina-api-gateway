@@ -6,24 +6,22 @@ import { APP_CONFIG } from '../../config/config.constants';
 import { AppConfig } from '../../config/config.types';
 import { GatewayClaims } from './auth.types';
 
-function toRoleList(payload: Record<string, unknown>): string[] {
-  const roleFromRoot = typeof payload.role === 'string' ? [payload.role] : [];
-  const appMetadata = (payload.app_metadata ?? {}) as Record<string, unknown>;
-  const roleFromArray = Array.isArray(appMetadata.roles)
-    ? appMetadata.roles.filter((value): value is string => typeof value === 'string')
-    : [];
-  return Array.from(new Set([...roleFromRoot, ...roleFromArray]));
+function toStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
 }
 
 @Injectable()
-export class SupabaseStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class ClerkStrategy extends PassportStrategy(Strategy, 'clerk') {
   constructor(@Inject(APP_CONFIG) config: AppConfig) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       algorithms: ['RS256'],
       issuer: config.auth.issuer,
-      audience: config.auth.audience,
       secretOrKeyProvider: passportJwtSecret({
         cache: true,
         cacheMaxEntries: 10,
@@ -37,19 +35,17 @@ export class SupabaseStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   validate(payload: Record<string, unknown>): GatewayClaims {
     const userId = typeof payload.sub === 'string' ? payload.sub : undefined;
-
     if (!userId) {
       throw new UnauthorizedException('JWT payload is missing subject');
     }
 
-    const appMetadata = (payload.app_metadata ?? {}) as Record<string, unknown>;
-    const orgFromRoot = typeof payload.org_id === 'string' ? payload.org_id : undefined;
-    const orgFromAppMetadata = typeof appMetadata.org_id === 'string' ? appMetadata.org_id : undefined;
+    const publicMetadata = (payload.public_metadata ?? {}) as Record<string, unknown>;
+    const orgId = typeof publicMetadata.organization_id === 'string' ? publicMetadata.organization_id : undefined;
 
     return {
       userId,
-      orgId: orgFromRoot ?? orgFromAppMetadata,
-      roles: toRoleList(payload),
+      orgId,
+      roles: toStringList(publicMetadata.roles),
       email: typeof payload.email === 'string' ? payload.email : undefined,
       raw: payload,
     };

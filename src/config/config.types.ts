@@ -1,9 +1,9 @@
 export type NodeEnv = 'development' | 'test' | 'production';
 
 export interface AuthConfig {
+  secretKey: string;
   jwksUri: string;
   issuer: string;
-  audience: string;
 }
 
 export interface ServiceRouteConfig {

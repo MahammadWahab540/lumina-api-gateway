@@ -8,7 +8,7 @@ import { AppConfig } from '../../config/config.types';
 import { PUBLIC_ROUTE_KEY } from './public.decorator';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('supabase') implements CanActivate {
+export class JwtAuthGuard extends AuthGuard('clerk') implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     @Inject(APP_CONFIG) private readonly config: AppConfig,

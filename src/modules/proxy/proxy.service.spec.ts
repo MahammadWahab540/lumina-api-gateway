@@ -11,9 +11,9 @@ function buildConfig(): AppConfig {
     corsOrigins: ['*'],
     publicRoutes: ['/auth/login'],
     auth: {
-      jwksUri: 'https://supabase.example/auth/v1/.well-known/jwks.json',
-      issuer: 'https://supabase.example/auth/v1',
-      audience: 'authenticated',
+      secretKey: 'sk_test_xxx',
+      jwksUri: 'https://api.clerk.com/v1/jwks',
+      issuer: 'https://lumina.clerk.accounts.dev',
     },
     security: {
       allowedOrigins: ['*'],
@@ -74,6 +74,20 @@ describe('ProxyService', () => {
     expect((service as any).buildTargetUrl('https://supabase.example/storage/v1', request, 'storage')).toBe(
       'https://supabase.example/storage/v1/object/public/bucket/file.png?download=true',
     );
+  });
+
+  it('injects empty org and roles headers when claims are missing optional values', () => {
+    const request = {
+      id: 'req-2',
+      headers: {},
+      user: { userId: 'user-2', roles: [], raw: { sub: 'user-2' } },
+    } as unknown as FastifyRequest;
+
+    const rewritten = (service as any).rewriteRequestHeaders({}, request, 'auth');
+
+    expect(rewritten['x-user-id']).toBe('user-2');
+    expect(rewritten['x-org-id']).toBe('');
+    expect(rewritten['x-user-roles']).toBe('');
   });
 
   it('injects apikey for Supabase targets and strips spoofed identity headers', () => {
