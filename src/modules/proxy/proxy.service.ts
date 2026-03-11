@@ -166,12 +166,8 @@ export class ProxyService {
     const claims = (request as unknown as { user?: GatewayClaims }).user;
     if (claims) {
       rewritten['x-user-id'] = claims.userId;
-      if (claims.orgId) {
-        rewritten['x-org-id'] = claims.orgId;
-      }
-      if (claims.roles && claims.roles.length > 0) {
-        rewritten['x-user-roles'] = claims.roles.join(',');
-      }
+      rewritten['x-org-id'] = claims.orgId ?? '';
+      rewritten['x-user-roles'] = claims.roles.join(',');
       if (claims.email) {
         rewritten['x-user-email'] = claims.email;
       }
