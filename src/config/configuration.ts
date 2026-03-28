@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { AppConfig, NodeEnv } from './config.types';
 
 const nodeEnvSchema = z.enum(['development', 'test', 'production']);
+const optionalUrlSchema = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
+  z.string().url().optional(),
+);
 
 const envSchema = z.object({
   NODE_ENV: nodeEnvSchema.default('development'),
@@ -13,20 +17,20 @@ const envSchema = z.object({
   SUPABASE_JWT_ISSUER: z.string().url(),
   SUPABASE_JWT_AUDIENCE: z.string().trim().min(1),
   REDIS_URL: z.string().url(),
-  AUTH_SERVICE_URL: z.string().url(),
-  TENANT_SERVICE_URL: z.string().url(),
-  USER_SERVICE_URL: z.string().url(),
-  COURSE_SERVICE_URL: z.string().url(),
-  ENROLLMENT_SERVICE_URL: z.string().url(),
-  ASSIGNMENT_SERVICE_URL: z.string().url(),
-  SKILL_SERVICE_URL: z.string().url(),
-  AI_SERVICE_URL: z.string().url(),
-  GAMIFICATION_SERVICE_URL: z.string().url(),
-  ANALYTICS_SERVICE_URL: z.string().url(),
-  NOTIFICATION_SERVICE_URL: z.string().url(),
+  AUTH_SERVICE_URL: optionalUrlSchema,
+  TENANT_SERVICE_URL: optionalUrlSchema,
+  USER_SERVICE_URL: optionalUrlSchema,
+  COURSE_SERVICE_URL: optionalUrlSchema,
+  ENROLLMENT_SERVICE_URL: optionalUrlSchema,
+  ASSIGNMENT_SERVICE_URL: optionalUrlSchema,
+  SKILL_SERVICE_URL: optionalUrlSchema,
+  AI_SERVICE_URL: optionalUrlSchema,
+  GAMIFICATION_SERVICE_URL: optionalUrlSchema,
+  ANALYTICS_SERVICE_URL: optionalUrlSchema,
+  NOTIFICATION_SERVICE_URL: optionalUrlSchema,
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().trim().min(1),
-  PERSONALIZATION_SERVICE_URL: z.string().url(),
+  PERSONALIZATION_SERVICE_URL: optionalUrlSchema,
   ALLOWED_ORIGINS: z.string().trim().default('*'),
   PROXY_TIMEOUT_MS: z.coerce.number().int().min(100).default(10000),
   RATE_LIMIT_GLOBAL_TTL: z.coerce.number().int().min(100).default(60000),

@@ -106,6 +106,8 @@ function buildValidEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     REDIS_URL: 'redis://127.0.0.1:6390',
     AUTH_SERVICE_URL: 'http://127.0.0.1:3001',
     AI_SERVICE_URL: 'http://127.0.0.1:3002',
+    SUPABASE_URL: 'https://example.supabase.co',
+    SUPABASE_ANON_KEY: 'anon-key',
     PROXY_TIMEOUT_MS: '100',
     RATE_LIMIT_GLOBAL_TTL: '60000',
     RATE_LIMIT_GLOBAL_LIMIT: '1000',

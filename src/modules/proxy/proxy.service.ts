@@ -41,6 +41,23 @@ export class ProxyService {
 
   forward(request: FastifyRequest, reply: FastifyReply, prefix: ServicePrefix): void {
     const targetBase = this.getTargetBase(prefix);
+    if (!targetBase) {
+      this.logger.warn(
+        JSON.stringify({
+          msg: 'proxy_target_missing',
+          requestId: request.id,
+          routePrefix: prefix,
+        }),
+      );
+      reply.code(503).send({
+        code: 'UPSTREAM_NOT_CONFIGURED',
+        message: `No upstream service is configured for /${prefix} routes`,
+        requestId: request.id,
+        details: { routePrefix: prefix },
+      });
+      return;
+    }
+
     const targetUrl = this.buildTargetUrl(targetBase, request, prefix);
     const upstreamHost = new URL(targetBase).host;
     request.headers['x-upstream-host'] = upstreamHost;
@@ -81,7 +98,7 @@ export class ProxyService {
     });
   }
 
-  private getTargetBase(prefix: ServicePrefix): string {
+  private getTargetBase(prefix: ServicePrefix): string | undefined {
     const services = this.config.services;
     switch (prefix) {
       case 'auth': return services.authServiceUrl;

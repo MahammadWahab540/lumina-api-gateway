@@ -7,20 +7,20 @@ export interface AuthConfig {
 }
 
 export interface ServiceRouteConfig {
-  authServiceUrl: string;
-  tenantServiceUrl: string;
-  userServiceUrl: string;
-  courseServiceUrl: string;
-  enrollmentServiceUrl: string;
-  assignmentServiceUrl: string;
-  skillServiceUrl: string;
-  aiServiceUrl: string;
-  gamificationServiceUrl: string;
-  analyticsServiceUrl: string;
-  notificationServiceUrl: string;
+  authServiceUrl?: string;
+  tenantServiceUrl?: string;
+  userServiceUrl?: string;
+  courseServiceUrl?: string;
+  enrollmentServiceUrl?: string;
+  assignmentServiceUrl?: string;
+  skillServiceUrl?: string;
+  aiServiceUrl?: string;
+  gamificationServiceUrl?: string;
+  analyticsServiceUrl?: string;
+  notificationServiceUrl?: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
-  personalizationServiceUrl: string;
+  personalizationServiceUrl?: string;
   proxyTimeoutMs: number;
 }
 
