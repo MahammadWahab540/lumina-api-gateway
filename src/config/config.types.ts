@@ -23,6 +23,7 @@ export interface ServiceRouteConfig {
   supabaseServiceRoleKey: string;
   openmaicServiceUrl: string;
   personalizationServiceUrl: string;
+  internalServiceKey: string;
   proxyTimeoutMs: number;
 }
 

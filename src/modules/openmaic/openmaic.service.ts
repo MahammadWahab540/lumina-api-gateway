@@ -180,7 +180,48 @@ export class OpenMaicService {
       headers.set('x-forwarded-proto', forwardedProto);
     }
 
+    if (this.config.services.internalServiceKey) {
+      headers.set('x-internal-secret', this.config.services.internalServiceKey);
+    }
+
     return headers;
+  }
+
+  async proxyRequest(
+    path: string,
+    method: string,
+    headers: Record<string, string>,
+    body?: any,
+  ): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
+    const url = this.buildTargetUrl(path);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.config.services.proxyTimeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: this.buildRequestHeaders(headers),
+        body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+        signal: controller.signal,
+      });
+
+      const responseBody = await response.arrayBuffer();
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        // Skip headers that might cause issues with proxying
+        if (!['content-encoding', 'content-length', 'transfer-encoding'].includes(key.toLowerCase())) {
+          responseHeaders[key] = value;
+        }
+      });
+
+      return {
+        status: response.status,
+        headers: responseHeaders,
+        body: Buffer.from(responseBody),
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   private parseUpstreamPayload(rawBody: string): UpstreamPayload | null {

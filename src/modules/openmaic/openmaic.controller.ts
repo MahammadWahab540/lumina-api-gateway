@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req } from '@nestjs/common';
-import { FastifyRequest } from 'fastify';
+import { All, Body, Controller, Get, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { GatewayClaims } from '../auth/auth.types';
 import { OpenMaicService } from './openmaic.service';
 import { WarmupClassroomRequest } from './openmaic.types';
@@ -29,5 +29,24 @@ export class OpenMaicController {
     @Body() body: Omit<WarmupClassroomRequest, 'stageId'>,
   ) {
     return this.openMaicService.regenerate(request.user, stageId, body, request);
+  }
+
+  @All('proxy/*')
+  async proxy(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    const wildpath = (request.params as any)['*'];
+    const result = await this.openMaicService.proxyRequest(
+      wildpath,
+      request.method,
+      request.headers as any,
+      request.body,
+    );
+
+    reply
+      .status(result.status)
+      .headers(result.headers)
+      .send(result.body);
   }
 }
