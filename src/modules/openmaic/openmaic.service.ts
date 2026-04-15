@@ -165,10 +165,17 @@ export class OpenMaicService {
     return new URL(normalizedPath, `${normalizedBase}/`).toString();
   }
 
-  private buildRequestHeaders(initHeaders: HeadersInit | undefined, requestContext?: RequestContext): Headers {
+  private buildRequestHeaders(
+    initHeaders: HeadersInit | undefined,
+    requestContext?: RequestContext,
+    isProxy: boolean = false,
+  ): Headers {
     const headers = new Headers(initHeaders);
-    headers.set('accept', 'application/json');
-    headers.set('content-type', 'application/json');
+
+    if (!isProxy) {
+      headers.set('accept', 'application/json');
+      headers.set('content-type', 'application/json');
+    }
 
     const forwardedHost = getHeaderValue(requestContext?.headers, 'x-forwarded-host');
     if (forwardedHost) {
@@ -200,8 +207,8 @@ export class OpenMaicService {
     try {
       const response = await fetch(url, {
         method,
-        headers: this.buildRequestHeaders(headers),
-        body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+        headers: this.buildRequestHeaders(headers, undefined, true),
+        body: body ? (Buffer.isBuffer(body) || typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
         signal: controller.signal,
       });
 
