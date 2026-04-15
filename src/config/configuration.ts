@@ -26,6 +26,8 @@ const envSchema = z.object({
   NOTIFICATION_SERVICE_URL: z.string().url(),
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().trim().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().trim().default(''),
+  OPENMAIC_SERVICE_URL: z.string().url(),
   PERSONALIZATION_SERVICE_URL: z.string().url(),
   ALLOWED_ORIGINS: z.string().trim().default('*'),
   PROXY_TIMEOUT_MS: z.coerce.number().int().min(100).default(10000),
@@ -39,6 +41,8 @@ const envSchema = z.object({
   RATE_LIMIT_REST_LIMIT: z.coerce.number().int().min(1).default(60),
   RATE_LIMIT_STORAGE_TTL: z.coerce.number().int().min(100).default(60000),
   RATE_LIMIT_STORAGE_LIMIT: z.coerce.number().int().min(1).default(100),
+  RATE_LIMIT_OPENMAIC_TTL: z.coerce.number().int().min(100).default(60000),
+  RATE_LIMIT_OPENMAIC_LIMIT: z.coerce.number().int().min(1).default(60),
   PUBLIC_ROUTES: z.string().trim().default('/auth/login,/auth/refresh'),
 });
 
@@ -111,6 +115,8 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
       notificationServiceUrl: data.NOTIFICATION_SERVICE_URL,
       supabaseUrl: data.SUPABASE_URL,
       supabaseAnonKey: data.SUPABASE_ANON_KEY,
+      supabaseServiceRoleKey: data.SUPABASE_SERVICE_ROLE_KEY,
+      openmaicServiceUrl: data.OPENMAIC_SERVICE_URL,
       personalizationServiceUrl: data.PERSONALIZATION_SERVICE_URL,
       proxyTimeoutMs: data.PROXY_TIMEOUT_MS,
     },
@@ -139,6 +145,11 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
         ttlMs: data.RATE_LIMIT_STORAGE_TTL,
         limit: data.RATE_LIMIT_STORAGE_LIMIT,
         blockDurationMs: data.RATE_LIMIT_STORAGE_TTL,
+      },
+      openmaic: {
+        ttlMs: data.RATE_LIMIT_OPENMAIC_TTL,
+        limit: data.RATE_LIMIT_OPENMAIC_LIMIT,
+        blockDurationMs: data.RATE_LIMIT_OPENMAIC_TTL,
       },
     },
   };

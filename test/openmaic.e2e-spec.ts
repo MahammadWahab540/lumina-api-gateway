@@ -11,7 +11,7 @@ import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { APP_CONFIG } from '../src/config/config.constants';
 import { AppConfig } from '../src/config/config.types';
-import { isPublicRoute, loadConfiguration } from '../src/config/configuration';
+import { isPublicRoute } from '../src/config/configuration';
 import { GatewayClaims } from '../src/modules/auth/auth.types';
 import { JwtAuthGuard } from '../src/modules/auth/jwt-auth.guard';
 import { PUBLIC_ROUTE_KEY } from '../src/modules/auth/public.decorator';
@@ -115,12 +115,12 @@ function buildValidEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     GAMIFICATION_SERVICE_URL: 'http://127.0.0.1:3009',
     ANALYTICS_SERVICE_URL: 'http://127.0.0.1:3010',
     NOTIFICATION_SERVICE_URL: 'http://127.0.0.1:3011',
-    SUPABASE_URL: 'https://example.supabase.co',
+    PERSONALIZATION_SERVICE_URL: 'http://127.0.0.1:3012',
+    SUPABASE_URL: 'http://127.0.0.1:54321',
     SUPABASE_ANON_KEY: 'anon-key',
     SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
-    OPENMAIC_SERVICE_URL: 'https://openmaic.example',
-    PERSONALIZATION_SERVICE_URL: 'http://127.0.0.1:3012',
-    PROXY_TIMEOUT_MS: '100',
+    OPENMAIC_SERVICE_URL: 'http://127.0.0.1:3013',
+    PROXY_TIMEOUT_MS: '1000',
     RATE_LIMIT_GLOBAL_TTL: '60000',
     RATE_LIMIT_GLOBAL_LIMIT: '1000',
     RATE_LIMIT_AUTH_TTL: '60000',
@@ -138,55 +138,76 @@ function buildValidEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   };
 }
 
-describe('Gateway e2e', () => {
+describe('OpenMAIC gateway e2e', () => {
   let app: NestFastifyApplication;
-  let authServer: Server;
-  let aiServer: Server;
+  let openmaicServer: Server;
+  let supabaseServer: Server;
   let originalEnv: NodeJS.ProcessEnv;
+  let lastSupabaseBody = '';
 
   beforeAll(async () => {
     originalEnv = { ...process.env };
 
-    const auth = await startServer(async (req, res) => {
+    const openmaic = await startServer(async (req, res) => {
       const body = await readBody(req);
       res.setHeader('content-type', 'application/json');
-      res.end(
-        JSON.stringify({
-          service: 'auth',
-          path: req.url,
-          method: req.method,
-          headers: req.headers,
-          body,
-        }),
-      );
-    });
 
-    const ai = await startServer(async (req, res) => {
-      if (req.url?.startsWith('/slow')) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
+      if (req.method === 'POST' && req.url?.startsWith('/api/pathwisse/classrooms/warmup')) {
+        res.end(
+          JSON.stringify({
+            success: true,
+            status: 'ready',
+            stageId: 'stage-1',
+            classroomId: 'classroom-1',
+            embedUrl: 'https://openmaic.example/classroom/classroom-1?embed=true&mode=pathwisse-lesson',
+            message: 'warm',
+          }),
+        );
+        return;
       }
 
-      const body = await readBody(req);
-      res.setHeader('content-type', 'application/json');
-      res.end(
-        JSON.stringify({
-          service: 'ai',
-          path: req.url,
-          method: req.method,
-          headers: req.headers,
-          body,
-        }),
-      );
+      if (req.method === 'GET' && req.url === '/api/pathwisse/classrooms/stages/stage-1') {
+        res.end(
+          JSON.stringify({
+            success: true,
+            status: 'warming',
+            stageId: 'stage-1',
+            jobId: 'job-1',
+          }),
+        );
+        return;
+      }
+
+      if (req.method === 'POST' && req.url === '/api/pathwisse/classrooms/stages/stage-1/regenerate') {
+        res.end(
+          JSON.stringify({
+            success: true,
+            status: 'warming',
+            stageId: 'stage-1',
+            jobId: 'job-2',
+          }),
+        );
+        return;
+      }
+
+      res.statusCode = 404;
+      res.end(JSON.stringify({ success: false }));
     });
 
-    authServer = auth.server;
-    aiServer = ai.server;
+    const supabase = await startServer(async (req, res) => {
+      lastSupabaseBody = await readBody(req);
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify([{ id: 'meta-1' }]));
+    });
+
+    openmaicServer = openmaic.server;
+    supabaseServer = supabase.server;
 
     process.env = {
       ...process.env,
       ...buildValidEnv({
-        AUTH_SERVICE_URL: auth.baseUrl,
-        AI_SERVICE_URL: ai.baseUrl,
+        OPENMAIC_SERVICE_URL: openmaic.baseUrl,
+        SUPABASE_URL: supabase.baseUrl,
       }),
     };
 
@@ -225,88 +246,69 @@ describe('Gateway e2e', () => {
     }
 
     await new Promise<void>((resolve, reject) => {
-      authServer.close((err) => (err ? reject(err) : resolve()));
+      openmaicServer.close((err) => (err ? reject(err) : resolve()));
     });
     await new Promise<void>((resolve, reject) => {
-      aiServer.close((err) => (err ? reject(err) : resolve()));
+      supabaseServer.close((err) => (err ? reject(err) : resolve()));
     });
 
     process.env = originalEnv;
   });
 
-  it('returns health status without auth', async () => {
-    const response = await request(app.getHttpServer()).get('/health');
-
-    expect(response.status).toBe(200);
-    expect(response.body.checks.process).toBe('up');
-    expect(['ok', 'degraded']).toContain(response.body.status);
-  });
-
-  it('rejects protected ai route without token', async () => {
-    const response = await request(app.getHttpServer()).get('/ai/infer');
-
-    expect(response.status).toBe(401);
-    expect(response.body.code).toBe('UNAUTHORIZED');
-    expect(typeof response.body.requestId).toBe('string');
-  });
-
-  it('scrubs spoofed headers and injects trusted claims on auth proxy route', async () => {
+  it('warms a shared classroom through the OpenMAIC upstream and writes metadata to Supabase', async () => {
     const response = await request(app.getHttpServer())
-      .post('/auth/session?include=roles')
+      .post('/openmaic/classrooms/warmup')
       .set('authorization', 'Bearer valid-token')
-      .set('x-user-id', 'spoofed-user')
-      .set('x-org-id', 'spoofed-org')
-      .send({ source: 'e2e' });
+      .send({
+        stageId: 'stage-1',
+        topic: 'Gravity',
+        description: 'Foundations of gravity',
+        language: 'en-US',
+      });
 
     expect(response.status).toBe(200);
-    expect(response.body.service).toBe('auth');
-    expect(response.body.path).toBe('/session?include=roles');
-    expect(response.body.headers['x-user-id']).toBe('user-123');
-    expect(response.body.headers['x-org-id']).toBe('org-456');
-    expect(response.body.headers['x-user-roles']).toBe('admin');
-    expect(response.body.headers['x-user-email']).toBe('user@example.com');
-    expect(response.body.headers['x-request-id']).toBeDefined();
-  });
-
-  it('forwards authenticated ai proxy traffic to ai upstream', async () => {
-    const response = await request(app.getHttpServer())
-      .get('/ai/infer?model=lite')
-      .set('authorization', 'Bearer valid-token');
-
-    expect(response.status).toBe(200);
-    expect(response.body.service).toBe('ai');
-    expect(response.body.path).toBe('/infer?model=lite');
-    expect(response.body.headers['x-user-id']).toBe('user-123');
-  });
-
-  it('returns standardized timeout envelope for slow upstream', async () => {
-    const response = await request(app.getHttpServer())
-      .get('/ai/slow')
-      .set('authorization', 'Bearer valid-token');
-
-    expect(response.status).toBe(504);
-    expect(response.body.code).toBe('UPSTREAM_TIMEOUT');
-    expect(typeof response.body.requestId).toBe('string');
-  });
-
-  it('fails fast on invalid environment values', () => {
-    expect(() =>
-      loadConfiguration(
-        buildValidEnv({
-          SUPABASE_JWKS_URI: 'not-a-url',
+    expect(response.body.status).toBe('ready');
+    expect(response.body.classroomId).toBe('classroom-1');
+    expect(JSON.parse(lastSupabaseBody)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stage_id: 'stage-1',
+          classroom_id: 'classroom-1',
+          status: 'ready',
+          user_id: 'user-123',
         }),
-      ),
-    ).toThrow('Invalid environment configuration');
+      ]),
+    );
   });
 
-  it('parses PUBLIC_ROUTES and supports wildcard matching', () => {
-    const config = loadConfiguration(
-      buildValidEnv({
-        PUBLIC_ROUTES: '/auth/login, /hooks/*',
-      }),
-    );
+  it('returns the upstream shared classroom status for a stage', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/openmaic/classrooms/stages/stage-1')
+      .set('authorization', 'Bearer valid-token');
 
-    expect(config.publicRoutes).toEqual(['/auth/login', '/hooks/*']);
-    expect(isPublicRoute('/hooks/stripe', config.publicRoutes)).toBe(true);
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      status: 'warming',
+      stageId: 'stage-1',
+      jobId: 'job-1',
+    });
+  });
+
+  it('queues regeneration through the upstream service', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/openmaic/classrooms/stages/stage-1/regenerate')
+      .set('authorization', 'Bearer valid-token')
+      .send({
+        topic: 'Gravity',
+        description: 'Updated classroom',
+        language: 'en-US',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      status: 'warming',
+      stageId: 'stage-1',
+      jobId: 'job-2',
+    });
   });
 });

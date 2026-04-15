@@ -20,6 +20,8 @@ export interface ServiceRouteConfig {
   notificationServiceUrl: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
+  supabaseServiceRoleKey: string;
+  openmaicServiceUrl: string;
   personalizationServiceUrl: string;
   proxyTimeoutMs: number;
 }
@@ -36,6 +38,7 @@ export interface RateLimitConfig {
   ai: RateLimitBucketConfig;
   rest: RateLimitBucketConfig;
   storage: RateLimitBucketConfig;
+  openmaic: RateLimitBucketConfig;
 }
 
 export interface SecurityConfig {

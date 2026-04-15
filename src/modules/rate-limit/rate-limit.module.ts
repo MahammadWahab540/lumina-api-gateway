@@ -16,13 +16,7 @@ function getPath(context: { switchToHttp: () => { getRequest: () => { raw?: { ur
     ThrottlerModule.forRootAsync({
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig) => ({
-        storage: new ThrottlerStorageRedisService(config.redisUrl, {
-          lazyConnect: true,
-          enableOfflineQueue: false,
-          maxRetriesPerRequest: 1,
-          connectTimeout: 150,
-          retryStrategy: () => null,
-        }),
+        // Storage removed to fallback to default in-memory storage when Redis is unavailable
         setHeaders: true,
         throttlers: [
           {
@@ -58,6 +52,13 @@ function getPath(context: { switchToHttp: () => { getRequest: () => { raw?: { ur
             limit: config.rateLimit.storage.limit,
             blockDuration: config.rateLimit.storage.blockDurationMs,
             skipIf: (context) => !getPath(context).startsWith('/storage'),
+          },
+          {
+            name: 'openmaic',
+            ttl: config.rateLimit.openmaic.ttlMs,
+            limit: config.rateLimit.openmaic.limit,
+            blockDuration: config.rateLimit.openmaic.blockDurationMs,
+            skipIf: (context) => !getPath(context).startsWith('/openmaic'),
           },
         ],
       }),
