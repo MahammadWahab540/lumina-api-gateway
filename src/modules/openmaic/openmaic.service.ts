@@ -64,7 +64,7 @@ export class OpenMaicService {
 
     const startedAt = Date.now();
     const response = await this.sendRequest<WarmupClassroomResponse>(
-      '/api/pathwisse/classrooms/warmup',
+      '/api/classroom/warmup',
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -72,8 +72,11 @@ export class OpenMaicService {
       requestContext,
     );
 
+    // Map the status from OpenMAIC to the response format and rewrite URLs
+    const processedResponse = this.rewriteResponseUrls(response);
+
     // Run persistence in background to avoid blocking
-    this.persistMetadata(claims, request, response).catch((err) =>
+    this.persistMetadata(claims, request, processedResponse).catch((err) =>
       this.logger.warn(`Background metadata persistence failed: ${err.message}`),
     );
 
@@ -81,12 +84,12 @@ export class OpenMaicService {
       JSON.stringify({
         msg: 'openmaic_warmup',
         stageId: request.stageId,
-        status: response.status,
+        status: processedResponse.status,
         durationMs: Date.now() - startedAt,
       }),
     );
 
-    return response;
+    return processedResponse;
   }
 
   async getStage(stageId: string, requestContext?: RequestContext): Promise<WarmupClassroomResponse> {
@@ -103,16 +106,18 @@ export class OpenMaicService {
       requestContext,
     );
 
+    const processedResponse = this.rewriteResponseUrls(response);
+
     this.logger.log(
       JSON.stringify({
         msg: 'openmaic_stage_lookup',
         stageId,
-        status: response.status,
+        status: processedResponse.status,
         durationMs: Date.now() - startedAt,
       }),
     );
 
-    return response;
+    return processedResponse;
   }
 
   async regenerate(
@@ -135,6 +140,8 @@ export class OpenMaicService {
       requestContext,
     );
 
+    const processedResponse = this.rewriteResponseUrls(response);
+
     // Run persistence in background to avoid blocking
     this.persistMetadata(
       claims,
@@ -142,7 +149,7 @@ export class OpenMaicService {
         ...request,
         stageId,
       },
-      response,
+      processedResponse,
     ).catch((err) =>
       this.logger.warn(`Background metadata persistence failed: ${err.message}`),
     );
@@ -151,12 +158,12 @@ export class OpenMaicService {
       JSON.stringify({
         msg: 'openmaic_regenerate',
         stageId,
-        status: response.status,
+        status: processedResponse.status,
         durationMs: Date.now() - startedAt,
       }),
     );
 
-    return response;
+    return processedResponse;
   }
 
   private buildTargetUrl(pathname: string): string {
@@ -200,7 +207,19 @@ export class OpenMaicService {
     headers: Record<string, string>,
     body?: any,
   ): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
-    const url = this.buildTargetUrl(path);
+    // 1. Handle Path Mapping (e.g., stages/[id] -> classroom/[id] for UI requests)
+    let targetPath = path;
+    const isDocumentRequest = headers['accept']?.includes('text/html');
+
+    if (isDocumentRequest && path.startsWith('stages/')) {
+        const stageId = path.split('/')[1];
+        if (stageId) {
+            targetPath = `classroom/${stageId}`;
+            this.logger.debug(`Mapping proxy path: ${path} -> ${targetPath}`);
+        }
+    }
+
+    const url = this.buildTargetUrl(targetPath);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.services.proxyTimeoutMs);
 
@@ -208,7 +227,7 @@ export class OpenMaicService {
       const response = await fetch(url, {
         method,
         headers: this.buildRequestHeaders(headers, undefined, true),
-        body: body ? (Buffer.isBuffer(body) || typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+        body: (body ? (Buffer.isBuffer(body) || typeof body === 'string' ? body : JSON.stringify(body)) : undefined) as any,
         signal: controller.signal,
       });
 
@@ -322,6 +341,28 @@ export class OpenMaicService {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private rewriteResponseUrls(response: WarmupClassroomResponse): WarmupClassroomResponse {
+    if (!response.embedUrl) {
+      return response;
+    }
+
+    const gatewayBase = this.config.services.luminaGatewayUrl.replace(/\/+$/, '');
+    const upstreamBase = this.config.services.openmaicServiceUrl.replace(/\/+$/, '');
+
+    // Map the upstream URL to the gateway proxy URL
+    // Upstream: https://openmaic.../classroom/[id]?embed=true...
+    // Proxy:    https://api-gateway.../openmaic/classrooms/proxy/classroom/[id]?embed=true...
+    
+    // We rewrite the base URL but keep the remaining path starting from /classroom/
+    // actually we map /classroom/ to proxy/classroom/ directly.
+    const rewrittenEmbedUrl = response.embedUrl.replace(upstreamBase, `${gatewayBase}/openmaic/classrooms/proxy`);
+
+    return {
+      ...response,
+      embedUrl: rewrittenEmbedUrl,
+    };
   }
 
   private async persistMetadata(

@@ -6,7 +6,7 @@ import { WarmupClassroomRequest } from './openmaic.types';
 
 type GatewayRequest = FastifyRequest & { user: GatewayClaims };
 
-@Controller('openmaic/classrooms')
+@Controller('openmaic')
 export class OpenMaicController {
   constructor(private readonly openMaicService: OpenMaicService) {}
 

@@ -30,6 +30,7 @@ const envSchema = z.object({
   OPENMAIC_SERVICE_URL: z.string().url(),
   PERSONALIZATION_SERVICE_URL: z.string().url().default('http://localhost:3000'),
   INTERNAL_SERVICE_KEY: z.string().trim().min(8),
+  LUMINA_GATEWAY_URL: z.string().url().default('http://localhost:3000'),
   ALLOWED_ORIGINS: z.string().trim().default('*'),
   PROXY_TIMEOUT_MS: z.coerce.number().int().min(100).default(10000),
   RATE_LIMIT_GLOBAL_TTL: z.coerce.number().int().min(100).default(60000),
@@ -120,6 +121,7 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
       openmaicServiceUrl: data.OPENMAIC_SERVICE_URL,
       personalizationServiceUrl: data.PERSONALIZATION_SERVICE_URL,
       internalServiceKey: data.INTERNAL_SERVICE_KEY,
+      luminaGatewayUrl: data.LUMINA_GATEWAY_URL,
       proxyTimeoutMs: data.PROXY_TIMEOUT_MS,
     },
     rateLimit: {

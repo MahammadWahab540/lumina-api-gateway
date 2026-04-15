@@ -24,6 +24,7 @@ export interface ServiceRouteConfig {
   openmaicServiceUrl: string;
   personalizationServiceUrl: string;
   internalServiceKey: string;
+  luminaGatewayUrl: string;
   proxyTimeoutMs: number;
 }
 
