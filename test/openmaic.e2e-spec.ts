@@ -133,6 +133,7 @@ function buildValidEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     RATE_LIMIT_STORAGE_LIMIT: '1000',
     RATE_LIMIT_OPENMAIC_TTL: '60000',
     RATE_LIMIT_OPENMAIC_LIMIT: '1000',
+    INTERNAL_SERVICE_KEY: 'test-internal-key',
     PUBLIC_ROUTES: '/auth/login,/auth/refresh',
     ...overrides,
   };
@@ -152,7 +153,7 @@ describe('OpenMAIC gateway e2e', () => {
       const body = await readBody(req);
       res.setHeader('content-type', 'application/json');
 
-      if (req.method === 'POST' && req.url?.startsWith('/api/pathwisse/classrooms/warmup')) {
+      if (req.method === 'POST' && req.url === '/api/warmup') {
         res.end(
           JSON.stringify({
             success: true,
@@ -166,7 +167,7 @@ describe('OpenMAIC gateway e2e', () => {
         return;
       }
 
-      if (req.method === 'GET' && req.url === '/api/pathwisse/classrooms/stages/stage-1') {
+      if (req.method === 'GET' && req.url === '/api/stages/stage-1') {
         res.end(
           JSON.stringify({
             success: true,
@@ -178,7 +179,7 @@ describe('OpenMAIC gateway e2e', () => {
         return;
       }
 
-      if (req.method === 'POST' && req.url === '/api/pathwisse/classrooms/stages/stage-1/regenerate') {
+      if (req.method === 'POST' && req.url === '/api/stages/stage-1/regenerate') {
         res.end(
           JSON.stringify({
             success: true,
@@ -257,7 +258,7 @@ describe('OpenMAIC gateway e2e', () => {
 
   it('warms a shared classroom through the OpenMAIC upstream and writes metadata to Supabase', async () => {
     const response = await request(app.getHttpServer())
-      .post('/openmaic/classrooms/warmup')
+      .post('/openmaic/warmup')
       .set('authorization', 'Bearer valid-token')
       .send({
         stageId: 'stage-1',
@@ -269,6 +270,10 @@ describe('OpenMAIC gateway e2e', () => {
     expect(response.status).toBe(200);
     expect(response.body.status).toBe('ready');
     expect(response.body.classroomId).toBe('classroom-1');
+
+    // Give some time for background persistence
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
     expect(JSON.parse(lastSupabaseBody)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -283,7 +288,7 @@ describe('OpenMAIC gateway e2e', () => {
 
   it('returns the upstream shared classroom status for a stage', async () => {
     const response = await request(app.getHttpServer())
-      .get('/openmaic/classrooms/stages/stage-1')
+      .get('/openmaic/stages/stage-1')
       .set('authorization', 'Bearer valid-token');
 
     expect(response.status).toBe(200);
@@ -296,7 +301,7 @@ describe('OpenMAIC gateway e2e', () => {
 
   it('queues regeneration through the upstream service', async () => {
     const response = await request(app.getHttpServer())
-      .post('/openmaic/classrooms/stages/stage-1/regenerate')
+      .post('/openmaic/stages/stage-1/regenerate')
       .set('authorization', 'Bearer valid-token')
       .send({
         topic: 'Gravity',

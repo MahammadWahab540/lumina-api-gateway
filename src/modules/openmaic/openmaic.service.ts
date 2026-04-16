@@ -99,7 +99,7 @@ export class OpenMaicService {
 
     const startedAt = Date.now();
     const response = await this.sendRequest<WarmupClassroomResponse>(
-      `/api/pathwisse/classrooms/stages/${encodeURIComponent(stageId)}`,
+      `/api/stages/${encodeURIComponent(stageId)}`,
       {
         method: 'GET',
       },
@@ -132,7 +132,7 @@ export class OpenMaicService {
 
     const startedAt = Date.now();
     const response = await this.sendRequest<WarmupClassroomResponse>(
-      `/api/pathwisse/classrooms/stages/${encodeURIComponent(stageId)}/regenerate`,
+      `/api/stages/${encodeURIComponent(stageId)}/regenerate`,
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -357,7 +357,7 @@ export class OpenMaicService {
     
     // We rewrite the base URL but keep the remaining path starting from /classroom/
     // actually we map /classroom/ to proxy/classroom/ directly.
-    const rewrittenEmbedUrl = response.embedUrl.replace(upstreamBase, `${gatewayBase}/openmaic/classrooms/proxy`);
+    const rewrittenEmbedUrl = response.embedUrl.replace(upstreamBase, `${gatewayBase}/openmaic/proxy`);
 
     return {
       ...response,
