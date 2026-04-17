@@ -11,6 +11,7 @@ type GatewayRequest = FastifyRequest & { user: GatewayClaims };
 export class OpenMaicController {
   constructor(private readonly openMaicService: OpenMaicService) {}
 
+  @Public()
   @Post('warmup')
   @HttpCode(200)
   warmup(@Req() request: GatewayRequest, @Body() body: WarmupClassroomRequest) {

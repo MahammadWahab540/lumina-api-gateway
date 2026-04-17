@@ -168,8 +168,8 @@ export class OpenMaicService {
 
   private buildTargetUrl(pathname: string): string {
     const normalizedBase = this.config.services.openmaicServiceUrl.replace(/\/+$/, '');
-    const normalizedPath = pathname.replace(/^\/+/, '');
-    return new URL(normalizedPath, `${normalizedBase}/`).toString();
+    const normalizedPath = pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+    return `${normalizedBase}/${normalizedPath}`;
   }
 
   private buildRequestHeaders(
@@ -291,26 +291,33 @@ export class OpenMaicService {
   }
 
   private async sendRequest<T>(pathname: string, init: RequestInit, requestContext?: RequestContext): Promise<T> {
+    const targetUrl = this.buildTargetUrl(pathname);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.services.proxyTimeoutMs);
 
     try {
-      const response = await fetch(this.buildTargetUrl(pathname), {
+      this.logger.debug(`Contacting OpenMAIC upstream: ${targetUrl}`);
+      const response = await fetch(targetUrl, {
         ...init,
         headers: this.buildRequestHeaders(init.headers, requestContext),
         signal: controller.signal,
       });
 
+      this.logger.debug(
+        `OpenMAIC Response: status=${response.status}, ok=${response.ok}, url=${response.url}`,
+      );
+
       const rawBody = await response.text();
       const payload = this.parseUpstreamPayload(rawBody);
 
       if (!response.ok || (payload !== null && payload.success === false)) {
-        const status = response.status >= 400 ? (response.status >= 500 ? 502 : response.status) : 502;
+        const status = response.status >= 400 ? (response.status >= 500 ? 502 : response.status) : response.status;
         throw new HttpException(
           {
             code: 'OPENMAIC_UPSTREAM_ERROR',
-            message: this.getUpstreamErrorMessage(payload, rawBody, response.status),
+            message: `${this.getUpstreamErrorMessage(payload, rawBody, response.status)} (Upstream: ${targetUrl})`,
             ...(payload?.details !== undefined ? { details: payload.details } : {}),
+            upstreamUrl: targetUrl,
           },
           status,
         );
