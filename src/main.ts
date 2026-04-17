@@ -25,6 +25,12 @@ function getRoutePrefix(pathname: string): string {
   if (pathname.startsWith('/health')) {
     return 'health';
   }
+  if (pathname.startsWith('/api')) {
+    return 'api';
+  }
+  if (pathname.startsWith('/openmaic')) {
+    return 'openmaic';
+  }
 
   return 'other';
 }
@@ -62,7 +68,18 @@ async function bootstrap(): Promise<void> {
 
   const fastify = app.getHttpAdapter().getInstance();
 
-  await fastify.register(helmet);
+  await fastify.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        'default-src': ["'self'"],
+        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", "data:", "blob:", ...config.security.allowedOrigins],
+        'font-src': ["'self'", "data:", "blob:", ...config.security.allowedOrigins],
+        'frame-ancestors': ["'self'", ...config.security.allowedOrigins],
+      },
+    },
+  });
   await fastify.register(cors, {
     origin: config.security.allowedOrigins.includes('*') ? true : config.security.allowedOrigins,
     credentials: true,

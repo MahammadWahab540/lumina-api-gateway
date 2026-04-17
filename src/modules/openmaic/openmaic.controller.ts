@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { GatewayClaims } from '../auth/auth.types';
 import { OpenMaicService } from './openmaic.service';
 import { WarmupClassroomRequest } from './openmaic.types';
+import { Public } from '../auth/public.decorator';
 
 type GatewayRequest = FastifyRequest & { user: GatewayClaims };
 
@@ -31,6 +32,7 @@ export class OpenMaicController {
     return this.openMaicService.regenerate(request.user, stageId, body, request);
   }
 
+  @Public()
   @All('proxy/*')
   async proxy(
     @Req() request: FastifyRequest,
@@ -42,6 +44,7 @@ export class OpenMaicController {
       request.method,
       request.headers as any,
       request.body,
+      request,
     );
 
     reply

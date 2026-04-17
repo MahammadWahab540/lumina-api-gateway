@@ -1,6 +1,7 @@
 import { All, Controller, Req, Res } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { OpenMaicService } from './openmaic.service';
+import { Public } from '../auth/public.decorator';
 
 /**
  * This controller handles global static assets required by the OpenMAIC UI 
@@ -12,6 +13,7 @@ import { OpenMaicService } from './openmaic.service';
 export class OpenMaicAssetsController {
   constructor(private readonly openMaicService: OpenMaicService) {}
 
+  @Public()
   @All('_next/*')
   async proxyNext(
     @Req() request: FastifyRequest,
@@ -20,8 +22,18 @@ export class OpenMaicAssetsController {
     return this.handleProxy(request, reply);
   }
 
+  @Public()
   @All('public/*')
   async proxyPublic(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    return this.handleProxy(request, reply);
+  }
+
+  @Public()
+  @All('api/*')
+  async proxyApi(
     @Req() request: FastifyRequest,
     @Res() reply: FastifyReply,
   ) {
@@ -41,6 +53,7 @@ export class OpenMaicAssetsController {
       request.method,
       request.headers as any,
       request.body,
+      request,
     );
 
     reply

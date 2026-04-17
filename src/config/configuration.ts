@@ -31,7 +31,7 @@ const envSchema = z.object({
   PERSONALIZATION_SERVICE_URL: z.string().url().default('http://localhost:3000'),
   INTERNAL_SERVICE_KEY: z.string().trim().min(8),
   LUMINA_GATEWAY_URL: z.string().url().default('http://localhost:3000'),
-  ALLOWED_ORIGINS: z.string().trim().default('*'),
+  ALLOWED_ORIGINS: z.string().trim().default('https://app.pathwisse.com,http://localhost:8080,https://preview--craft-happy-app.lovable.app'),
   PROXY_TIMEOUT_MS: z.coerce.number().int().min(100).default(10000),
   RATE_LIMIT_GLOBAL_TTL: z.coerce.number().int().min(100).default(60000),
   RATE_LIMIT_GLOBAL_LIMIT: z.coerce.number().int().min(1).default(120),

@@ -206,6 +206,7 @@ export class OpenMaicService {
     method: string,
     headers: Record<string, string>,
     body?: any,
+    requestContext?: RequestContext,
   ): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
     // 1. Handle Path Mapping (e.g., stages/[id] -> classroom/[id] for UI requests)
     let targetPath = path;
@@ -226,7 +227,7 @@ export class OpenMaicService {
     try {
       const response = await fetch(url, {
         method,
-        headers: this.buildRequestHeaders(headers, undefined, true),
+        headers: this.buildRequestHeaders(headers, requestContext, true),
         body: (body ? (Buffer.isBuffer(body) || typeof body === 'string' ? body : JSON.stringify(body)) : undefined) as any,
         signal: controller.signal,
       });
@@ -234,8 +235,9 @@ export class OpenMaicService {
       const responseBody = await response.arrayBuffer();
       const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => {
-        // Skip headers that might cause issues with proxying
-        if (!['content-encoding', 'content-length', 'transfer-encoding'].includes(key.toLowerCase())) {
+        // Skip headers that might cause issues with proxying or conflict with gateway policies
+        const lowerKey = key.toLowerCase();
+        if (!['content-encoding', 'content-length', 'transfer-encoding', 'content-security-policy', 'x-frame-options'].includes(lowerKey)) {
           responseHeaders[key] = value;
         }
       });
@@ -351,13 +353,24 @@ export class OpenMaicService {
     const gatewayBase = this.config.services.luminaGatewayUrl.replace(/\/+$/, '');
     const upstreamBase = this.config.services.openmaicServiceUrl.replace(/\/+$/, '');
 
-    // Map the upstream URL to the gateway proxy URL
-    // Upstream: https://openmaic.../classroom/[id]?embed=true...
-    // Proxy:    https://api-gateway.../openmaic/classrooms/proxy/classroom/[id]?embed=true...
-    
-    // We rewrite the base URL but keep the remaining path starting from /classroom/
-    // actually we map /classroom/ to proxy/classroom/ directly.
-    const rewrittenEmbedUrl = response.embedUrl.replace(upstreamBase, `${gatewayBase}/openmaic/proxy`);
+    // Robust replacement: replace the origin and normalize to /openmaic/proxy
+    let rewrittenEmbedUrl = response.embedUrl;
+    const proxyPrefix = `${gatewayBase}/openmaic/proxy`;
+
+    if (rewrittenEmbedUrl.startsWith(upstreamBase)) {
+        // Remove upstream base and ensure exactly one slash after proxy prefix
+        const subPath = rewrittenEmbedUrl.slice(upstreamBase.length).replace(/^\/+/, '');
+        rewrittenEmbedUrl = `${proxyPrefix}/${subPath}`;
+    } else {
+        // Fallback for different protocol or port
+        try {
+            const url = new URL(response.embedUrl);
+            const subPath = url.pathname.replace(/^\/+/, '');
+            rewrittenEmbedUrl = `${proxyPrefix}/${subPath}${url.search}`;
+        } catch (e) {
+            this.logger.warn(`Failed to parse embedUrl for rewrite: ${response.embedUrl}`);
+        }
+    }
 
     return {
       ...response,
