@@ -64,7 +64,7 @@ export class OpenMaicService {
 
     const startedAt = Date.now();
     const response = await this.sendRequest<WarmupClassroomResponse>(
-      '/api/warmup',
+      '/api/warmup-classroom',
       {
         method: 'POST',
         body: JSON.stringify(request),
