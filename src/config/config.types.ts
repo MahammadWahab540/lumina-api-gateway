@@ -25,6 +25,7 @@ export interface ServiceRouteConfig {
   personalizationServiceUrl: string;
   internalServiceKey: string;
   luminaGatewayUrl: string;
+  voiceDiscoveryServiceUrl: string;
   proxyTimeoutMs: number;
 }
 
@@ -41,6 +42,7 @@ export interface RateLimitConfig {
   rest: RateLimitBucketConfig;
   storage: RateLimitBucketConfig;
   openmaic: RateLimitBucketConfig;
+  voice: RateLimitBucketConfig;
 }
 
 export interface SecurityConfig {

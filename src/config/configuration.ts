@@ -45,6 +45,9 @@ const envSchema = z.object({
   RATE_LIMIT_STORAGE_LIMIT: z.coerce.number().int().min(1).default(100),
   RATE_LIMIT_OPENMAIC_TTL: z.coerce.number().int().min(100).default(60000),
   RATE_LIMIT_OPENMAIC_LIMIT: z.coerce.number().int().min(1).default(600),
+  VOICE_DISCOVERY_SERVICE_URL: z.string().url().default('http://localhost:8002'),
+  RATE_LIMIT_VOICE_TTL: z.coerce.number().int().min(100).default(60000),
+  RATE_LIMIT_VOICE_LIMIT: z.coerce.number().int().min(1).default(10),
   PUBLIC_ROUTES: z.string().trim().default('/auth/login,/auth/refresh'),
 });
 
@@ -122,6 +125,7 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
       personalizationServiceUrl: data.PERSONALIZATION_SERVICE_URL,
       internalServiceKey: data.INTERNAL_SERVICE_KEY,
       luminaGatewayUrl: data.LUMINA_GATEWAY_URL,
+      voiceDiscoveryServiceUrl: data.VOICE_DISCOVERY_SERVICE_URL,
       proxyTimeoutMs: data.PROXY_TIMEOUT_MS,
     },
     rateLimit: {
@@ -154,6 +158,11 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
         ttlMs: data.RATE_LIMIT_OPENMAIC_TTL,
         limit: data.RATE_LIMIT_OPENMAIC_LIMIT,
         blockDurationMs: data.RATE_LIMIT_OPENMAIC_TTL,
+      },
+      voice: {
+        ttlMs: data.RATE_LIMIT_VOICE_TTL,
+        limit: data.RATE_LIMIT_VOICE_LIMIT,
+        blockDurationMs: data.RATE_LIMIT_VOICE_TTL,
       },
     },
   };
