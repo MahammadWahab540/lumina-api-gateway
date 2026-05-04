@@ -8,6 +8,16 @@ export interface CreateVoiceSessionRequest {
   };
 }
 
+export interface CreateAssignmentVoiceSessionRequest {
+  assignmentId: string;
+  voiceSessionId?: string;
+  modelProvider?: 'gemini' | 'openai' | 'dashscope';
+  sessionConfig?: {
+    maxDurationSeconds?: number;
+    language?: string;
+  };
+}
+
 export interface VoiceSessionCreatedResponse {
   sessionId: string;
   agentscopeSessionId: string;
@@ -19,4 +29,12 @@ export interface VoiceSessionCreatedResponse {
 export interface AgentScopeSessionStatus {
   session_id: string;
   status: string;
+  ws_endpoint?: string;
+}
+
+export interface VoiceDiscoveryHealth {
+  healthy: boolean;
+  status: string;
+  providers?: Record<string, boolean>;
+  pool?: Record<string, unknown>;
 }

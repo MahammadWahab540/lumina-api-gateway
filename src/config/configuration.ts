@@ -45,7 +45,7 @@ const envSchema = z.object({
   RATE_LIMIT_STORAGE_LIMIT: z.coerce.number().int().min(1).default(100),
   RATE_LIMIT_OPENMAIC_TTL: z.coerce.number().int().min(100).default(60000),
   RATE_LIMIT_OPENMAIC_LIMIT: z.coerce.number().int().min(1).default(600),
-  VOICE_DISCOVERY_SERVICE_URL: z.string().url().default('http://localhost:8001'),
+  VOICE_DISCOVERY_SERVICE_URL: z.string().url().default('http://localhost:8002'),
   RATE_LIMIT_VOICE_TTL: z.coerce.number().int().min(100).default(60000),
   RATE_LIMIT_VOICE_LIMIT: z.coerce.number().int().min(1).default(10),
   PUBLIC_ROUTES: z.string().trim().default('/auth/login,/auth/refresh'),
