@@ -26,6 +26,7 @@ export interface ServiceRouteConfig {
   internalServiceKey: string;
   luminaGatewayUrl: string;
   voiceDiscoveryServiceUrl: string;
+  voiceAgentInternalSecret: string;
   proxyTimeoutMs: number;
 }
 

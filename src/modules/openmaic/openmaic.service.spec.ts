@@ -38,6 +38,10 @@ function buildConfig(
       supabaseAnonKey: 'anon-key',
       supabaseServiceRoleKey: 'service-role-key',
       openmaicServiceUrl: 'https://openmaic.example',
+      internalServiceKey: 'internal-secret',
+      luminaGatewayUrl: 'http://127.0.0.1:3000',
+      voiceDiscoveryServiceUrl: 'http://127.0.0.1:8002',
+      voiceAgentInternalSecret: overrides.voiceAgentInternalSecret || 'voice-agent-secret',
       personalizationServiceUrl: 'http://127.0.0.1:3012',
       proxyTimeoutMs: 1000,
       ...overrides,
@@ -49,6 +53,7 @@ function buildConfig(
       rest: { ttlMs: 60000, limit: 1000, blockDurationMs: 60000 },
       storage: { ttlMs: 60000, limit: 1000, blockDurationMs: 60000 },
       openmaic: { ttlMs: 60000, limit: 1000, blockDurationMs: 60000 },
+      voice: { ttlMs: 60000, limit: 1000, blockDurationMs: 60000 },
     },
   };
 }
@@ -109,7 +114,7 @@ describe('OpenMaicService', () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy.mock.calls[0][0]).toBe(
-      'https://openmaic.example/base/api/pathwisse/classrooms/warmup',
+      'https://openmaic.example/base/api/warmup-classroom',
     );
 
     const options = fetchSpy.mock.calls[0][1] as RequestInit;
@@ -145,7 +150,8 @@ describe('OpenMaicService', () => {
       expect(httpException.getResponse()).toEqual(
         expect.objectContaining({
           code: 'OPENMAIC_UPSTREAM_ERROR',
-          message: 'Classroom unavailable',
+          message: 'Classroom unavailable (Upstream: https://openmaic.example/api/warmup-classroom)',
+          upstreamUrl: 'https://openmaic.example/api/warmup-classroom',
           details: { stageId: 'stage-1' },
         }),
       );

@@ -411,7 +411,7 @@ export class VoiceDiscoveryService {
         ...init,
         headers: {
           'content-type': 'application/json',
-          'x-internal-secret': this.config.services.internalServiceKey,
+          'x-internal-secret': this.config.services.voiceAgentInternalSecret,
           ...(init.headers as Record<string, string> ?? {}),
         },
         signal: controller.signal,

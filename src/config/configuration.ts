@@ -29,6 +29,7 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().trim().default(''),
   OPENMAIC_SERVICE_URL: z.string().url(),
   PERSONALIZATION_SERVICE_URL: z.string().url().default('http://localhost:3000'),
+  VOICE_AGENT_INTERNAL_SECRET: z.string().trim().min(8),
   INTERNAL_SERVICE_KEY: z.string().trim().min(8),
   LUMINA_GATEWAY_URL: z.string().url().default('http://localhost:3000'),
   ALLOWED_ORIGINS: z.string().trim().default('https://app.pathwisse.com,http://localhost:8080,https://preview--craft-happy-app.lovable.app'),
@@ -126,6 +127,7 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
       internalServiceKey: data.INTERNAL_SERVICE_KEY,
       luminaGatewayUrl: data.LUMINA_GATEWAY_URL,
       voiceDiscoveryServiceUrl: data.VOICE_DISCOVERY_SERVICE_URL,
+      voiceAgentInternalSecret: data.VOICE_AGENT_INTERNAL_SECRET,
       proxyTimeoutMs: data.PROXY_TIMEOUT_MS,
     },
     rateLimit: {
