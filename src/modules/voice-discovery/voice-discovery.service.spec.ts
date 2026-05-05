@@ -38,6 +38,7 @@ function buildConfig(overrides: Partial<AppConfig['services']> = {}): AppConfig 
       internalServiceKey: 'internal-secret',
       luminaGatewayUrl: 'http://127.0.0.1:3000',
       voiceDiscoveryServiceUrl: 'http://127.0.0.1:8002',
+      voiceAgentInternalSecret: 'voice-agent-secret',
       proxyTimeoutMs: 1000,
       ...overrides,
     },

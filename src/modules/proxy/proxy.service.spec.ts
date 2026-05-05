@@ -34,6 +34,12 @@ function buildConfig(): AppConfig {
       supabaseUrl: 'https://supabase.example',
       supabaseAnonKey: 'anon-key',
       personalizationServiceUrl: 'http://personalization:3001',
+      openmaicServiceUrl: 'http://127.0.0.1:8003',
+      internalServiceKey: 'internal-secret',
+      luminaGatewayUrl: 'http://127.0.0.1:3000',
+      voiceDiscoveryServiceUrl: 'http://127.0.0.1:8002',
+      voiceAgentInternalSecret: 'voice-agent-secret',
+      supabaseServiceRoleKey: 'test-key',
       proxyTimeoutMs: 1000,
     },
     rateLimit: {
@@ -42,6 +48,8 @@ function buildConfig(): AppConfig {
       ai: { ttlMs: 60000, limit: 20, blockDurationMs: 60000 },
       rest: { ttlMs: 60000, limit: 80, blockDurationMs: 60000 },
       storage: { ttlMs: 60000, limit: 60, blockDurationMs: 60000 },
+      openmaic: { ttlMs: 60000, limit: 1000, blockDurationMs: 60000 },
+      voice: { ttlMs: 60000, limit: 1000, blockDurationMs: 60000 },
     },
   };
 }
