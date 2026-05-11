@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { IncomingMessage } from 'http';
 import { AppModule } from './app.module';
 import { loadConfiguration } from './config/configuration';
+import { installOpenMaicHmrProxy } from './modules/openmaic/hmr-proxy';
 
 function getRoutePrefix(pathname: string): string {
   if (pathname.startsWith('/auth')) {
@@ -72,10 +73,35 @@ async function bootstrap(): Promise<void> {
     contentSecurityPolicy: {
       directives: {
         'default-src': ["'self'"],
-        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-        'style-src': ["'self'", "'unsafe-inline'"],
+        'script-src': [
+          "'self'", 
+          "'unsafe-inline'", 
+          "'unsafe-eval'", 
+          "blob:", 
+          "https://cdn.jsdelivr.net"
+        ],
+        'style-src': [
+          "'self'", 
+          "'unsafe-inline'", 
+          "https://cdn.jsdelivr.net"
+        ],
         'img-src': ["'self'", "data:", "blob:", ...config.security.allowedOrigins],
-        'font-src': ["'self'", "data:", "blob:", ...config.security.allowedOrigins],
+        'font-src': [
+          "'self'", 
+          "data:", 
+          "blob:", 
+          "https://frontend-cdn.perplexity.ai",
+          ...config.security.allowedOrigins
+        ],
+        'connect-src': [
+          "'self'",
+          "https://huggingface.co",
+          "https://*.huggingface.co",
+          "https://cdn.jsdelivr.net",
+          ...config.security.allowedOrigins
+        ],
+        'media-src': ["'self'", "blob:", "data:"],
+        'worker-src': ["'self'", "blob:"],
         'frame-ancestors': ["'self'", ...config.security.allowedOrigins],
       },
     },
@@ -112,6 +138,12 @@ async function bootstrap(): Promise<void> {
 
   const logger = new Logger('Bootstrap');
   logger.log(`Lumina API Gateway listening on port ${config.port}`);
+
+  if (config.nodeEnv === 'development') {
+    const httpServer = app.getHttpAdapter().getInstance().server;
+    installOpenMaicHmrProxy(httpServer, config.services.openmaicServiceUrl);
+    logger.log('OpenMAIC HMR WebSocket proxy installed (development mode)');
+  }
 }
 
 bootstrap().catch((error) => {

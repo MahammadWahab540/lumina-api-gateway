@@ -1,4 +1,4 @@
-import { All, Controller, Req, Res } from '@nestjs/common';
+import { All, Controller, Get, Req, Res } from '@nestjs/common';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { OpenMaicService } from './openmaic.service';
 import { Public } from '../auth/public.decorator';
@@ -31,9 +31,46 @@ export class OpenMaicAssetsController {
     return this.handleProxy(request, reply);
   }
 
+
   @Public()
-  @All('api/*')
-  async proxyApi(
+  @All('avatars/*')
+  async proxyAvatars(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    return this.handleProxy(request, reply);
+  }
+
+  @Public()
+  @All('logos/*')
+  async proxyLogos(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    return this.handleProxy(request, reply);
+  }
+
+  @Public()
+  @All('audio/*')
+  async proxyAudio(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    return this.handleProxy(request, reply);
+  }
+
+  @Public()
+  @All('images/*')
+  async proxyImages(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    return this.handleProxy(request, reply);
+  }
+
+  @Public()
+  @Get('logo-horizontal.png')
+  async proxyLogoHorizontal(
     @Req() request: FastifyRequest,
     @Res() reply: FastifyReply,
   ) {

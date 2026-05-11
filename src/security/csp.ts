@@ -1,0 +1,45 @@
+export function buildCspDirectives(allowedOrigins: string[]) {
+  return {
+    'default-src': ["'self'"],
+    'script-src': [
+      "'self'",
+      "'unsafe-inline'",
+      "'unsafe-eval'",
+      // Required for WebAssembly (ONNX Runtime used by Kokoro TTS)
+      "'wasm-unsafe-eval'",
+      'blob:',
+      'https://cdn.jsdelivr.net',
+    ],
+    'worker-src': ["'self'", 'blob:'],
+    'style-src': ["'self'", "'unsafe-inline'"],
+    'img-src': ["'self'", 'data:', 'blob:', 'https://frontend-cdn.perplexity.ai', 'https://*.perplexity.ai', ...allowedOrigins],
+    'font-src': [
+      "'self'",
+      'data:',
+      'blob:',
+      'https://frontend-cdn.perplexity.ai',
+      'https://*.perplexity.ai',
+      'https://fonts.googleapis.com',
+      'https://fonts.gstatic.com',
+      ...allowedOrigins,
+    ],
+    'connect-src': [
+      "'self'",
+      'ws:',
+      'wss:',
+      'blob:',
+      'data:',
+      'https://cdn.jsdelivr.net',
+      'https://huggingface.co',
+      'https://*.huggingface.co',
+      'https://*.hf.co',
+      'https://frontend-cdn.perplexity.ai',
+      'https://*.perplexity.ai',
+      'ws://localhost:3000',
+      'ws://localhost:3001',
+      ...allowedOrigins,
+    ],
+    'media-src': ["'self'", 'blob:', 'data:', 'https:'],
+    'frame-ancestors': ["'self'", ...allowedOrigins],
+  };
+}

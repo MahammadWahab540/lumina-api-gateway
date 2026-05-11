@@ -118,10 +118,10 @@ describe('OpenMaicService', () => {
     );
 
     const options = fetchSpy.mock.calls[0][1] as RequestInit;
-    const headers = options.headers as Headers;
-    expect(headers.get('content-type')).toBe('application/json');
-    expect(headers.get('x-forwarded-host')).toBe('classroom.lumina.test');
-    expect(headers.get('x-forwarded-proto')).toBe('https');
+    const headers = options.headers as Record<string, string>;
+    expect(headers['content-type']).toBe('application/json');
+    expect(headers['x-forwarded-host']).toBe('classroom.lumina.test');
+    expect(headers['x-forwarded-proto']).toBe('https');
   });
 
   it('passes through upstream error details and status codes', async () => {

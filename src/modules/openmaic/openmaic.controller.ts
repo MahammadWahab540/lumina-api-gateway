@@ -54,3 +54,29 @@ export class OpenMaicController {
       .send(result.body);
   }
 }
+
+@Controller('api')
+export class OpenMaicApiController {
+  constructor(private readonly openMaicService: OpenMaicService) {}
+
+  @Public()
+  @All('*')
+  async proxyApi(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    const wildpath = (request.params as any)['*'];
+    const result = await this.openMaicService.proxyRequest(
+      `api/${wildpath}`,
+      request.method,
+      request.headers as any,
+      request.body,
+      request,
+    );
+
+    reply
+      .status(result.status)
+      .headers(result.headers)
+      .send(result.body);
+  }
+}

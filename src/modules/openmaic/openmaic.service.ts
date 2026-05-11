@@ -12,18 +12,9 @@ import { AppConfig } from '../../config/config.types';
 import { GatewayClaims } from '../auth/auth.types';
 import { WarmupClassroomRequest, WarmupClassroomResponse } from './openmaic.types';
 import { FastifyRequest } from 'fastify';
-import { IncomingHttpHeaders } from 'node:http';
 
 type RequestContext = Pick<FastifyRequest, 'headers'>;
 type UpstreamPayload = Record<string, unknown>;
-
-function getHeaderValue(headers: IncomingHttpHeaders | undefined, headerName: string): string | undefined {
-  const value = headers?.[headerName.toLowerCase()];
-  if (typeof value === 'string' && value.trim().length > 0) {
-    return value.trim();
-  }
-  return undefined;
-}
 
 function isPlaceholderServiceRoleKey(value: string): boolean {
   const normalized = value.trim().toLowerCase();
@@ -173,29 +164,54 @@ export class OpenMaicService {
   }
 
   private buildRequestHeaders(
-    initHeaders: HeadersInit | undefined,
+    initHeaders: any,
     requestContext?: RequestContext,
     isProxy: boolean = false,
-  ): Headers {
-    const headers = new Headers(initHeaders);
+  ): Record<string, string> {
+    const headers: Record<string, string> = {};
 
+    // 1. Initial headers from caller
+    if (initHeaders) {
+      if (typeof initHeaders.forEach === 'function') {
+        initHeaders.forEach((v: any, k: any) => {
+          headers[k.toLowerCase()] = String(v);
+        });
+      } else if (Array.isArray(initHeaders)) {
+        initHeaders.forEach(([k, v]) => {
+          headers[k.toLowerCase()] = String(v);
+        });
+      } else {
+        Object.entries(initHeaders).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) {
+            headers[k.toLowerCase()] = Array.isArray(v) ? v[0] : String(v);
+          }
+        });
+      }
+    }
+
+    // 2. Identity propagation from request context
+    if (requestContext?.headers) {
+      const propagate = ['x-org-id', 'x-user-id', 'x-request-id', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-for'];
+      for (const h of propagate) {
+        const val = requestContext.headers[h];
+        if (val) {
+          headers[h] = Array.isArray(val) ? val[0] : val;
+        }
+      }
+    }
+
+    // 3. Inject internal service key for authentication
+    const secret = this.config.services.internalServiceKey;
+    if (secret) {
+      // OpenMAIC expects 'x-api-key' for its authentication middleware
+      headers['x-api-key'] = secret;
+      headers['x-internal-secret'] = secret;
+    }
+
+    // 4. Force JSON for internal API calls
     if (!isProxy) {
-      headers.set('accept', 'application/json');
-      headers.set('content-type', 'application/json');
-    }
-
-    const forwardedHost = getHeaderValue(requestContext?.headers, 'x-forwarded-host');
-    if (forwardedHost) {
-      headers.set('x-forwarded-host', forwardedHost);
-    }
-
-    const forwardedProto = getHeaderValue(requestContext?.headers, 'x-forwarded-proto');
-    if (forwardedProto) {
-      headers.set('x-forwarded-proto', forwardedProto);
-    }
-
-    if (this.config.services.internalServiceKey) {
-      headers.set('x-internal-secret', this.config.services.internalServiceKey);
+      headers['accept'] = 'application/json';
+      headers['content-type'] = 'application/json';
     }
 
     return headers;
@@ -206,28 +222,32 @@ export class OpenMaicService {
     method: string,
     headers: Record<string, string>,
     body?: any,
-    requestContext?: RequestContext,
+    request?: FastifyRequest,
   ): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
     // 1. Handle Path Mapping (e.g., stages/[id] -> classroom/[id] for UI requests)
     let targetPath = path;
     const isDocumentRequest = headers['accept']?.includes('text/html');
 
     if (isDocumentRequest && path.startsWith('stages/')) {
-        const stageId = path.split('/')[1];
-        if (stageId) {
-            targetPath = `classroom/${stageId}`;
-            this.logger.debug(`Mapping proxy path: ${path} -> ${targetPath}`);
-        }
+      const stageId = path.split('/')[1];
+      if (stageId) {
+        targetPath = `classroom/${stageId}`;
+        this.logger.debug(`Mapping proxy path: ${path} -> ${targetPath}`);
+      }
     }
 
-    const url = this.buildTargetUrl(targetPath);
+    // 2. Extract search params from original request URL if available
+    const search = request?.raw.url?.includes('?') ? `?${request.raw.url.split('?')[1]}` : '';
+    const url = `${this.buildTargetUrl(targetPath)}${search}`;
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.services.proxyTimeoutMs);
 
     try {
+      this.logger.debug(`Proxying request: ${method} ${url}`);
       const response = await fetch(url, {
         method,
-        headers: this.buildRequestHeaders(headers, requestContext, true),
+        headers: this.buildRequestHeaders(headers, request, true),
         body: (body ? (Buffer.isBuffer(body) || typeof body === 'string' ? body : JSON.stringify(body)) : undefined) as any,
         signal: controller.signal,
       });
