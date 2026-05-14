@@ -11,9 +11,10 @@ import { OpenMaicModule } from './modules/openmaic/openmaic.module';
 import { ProxyModule } from './modules/proxy/proxy.module';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
 import { VoiceDiscoveryModule } from './modules/voice-discovery/voice-discovery.module';
+import { VoiceModule } from './modules/voice/voice.module';
 
 @Module({
-  imports: [AppConfigurationModule, AuthModule, RateLimitModule, HealthModule, ProxyModule, OpenMaicModule, VoiceDiscoveryModule],
+  imports: [AppConfigurationModule, AuthModule, RateLimitModule, HealthModule, ProxyModule, OpenMaicModule, VoiceDiscoveryModule, VoiceModule],
   providers: [
     {
       provide: APP_GUARD,

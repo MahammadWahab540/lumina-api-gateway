@@ -22,6 +22,8 @@ export interface ServiceRouteConfig {
   supabaseAnonKey: string;
   supabaseServiceRoleKey: string;
   openmaicServiceUrl: string;
+  openmaicEmbedSigningSecret: string;
+  openmaicEmbedTtlSeconds: number;
   personalizationServiceUrl: string;
   internalServiceKey: string;
   luminaGatewayUrl: string;

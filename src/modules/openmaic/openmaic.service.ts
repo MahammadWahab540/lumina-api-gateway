@@ -6,7 +6,8 @@ import {
   Inject,
   Injectable,
   Logger,
-} from '@nestjs/common';
+} from '@nestjs/common';import Redis from 'ioredis';
+import * as crypto from 'crypto';
 import { APP_CONFIG } from '../../config/config.constants';
 import { AppConfig } from '../../config/config.types';
 import { GatewayClaims } from '../auth/auth.types';
@@ -28,12 +29,15 @@ function isPlaceholderServiceRoleKey(value: string): boolean {
   );
 }
 
+import { OnModuleDestroy } from '@nestjs/common';
 @Injectable()
-export class OpenMaicService {
+export class OpenMaicService implements OnModuleDestroy {
   private readonly logger = new Logger(OpenMaicService.name);
   private readonly supabaseServiceRoleKey: string | null;
+  private readonly redis: Redis;
 
   constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {
+    this.redis = new Redis(this.config.redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
     const key = this.config.services.supabaseServiceRoleKey;
     this.supabaseServiceRoleKey = isPlaceholderServiceRoleKey(key) ? null : key;
 
@@ -49,6 +53,61 @@ export class OpenMaicService {
     request: WarmupClassroomRequest,
     requestContext?: RequestContext,
   ): Promise<WarmupClassroomResponse> {
+    const isNewPayload = request.courseId || request.lessonId || request.userId;
+
+    if (isNewPayload) {
+      // Validate new payload constraints
+      if (claims.userId !== request.userId) {
+        throw new HttpException({ code: 'FORBIDDEN', message: 'User mismatch' }, 403);
+      }
+      if (!claims.roles || !claims.roles.includes('student')) {
+        throw new HttpException({ code: 'FORBIDDEN', message: 'Student role required' }, 403);
+      }
+      if (!claims.tenantId) {
+        throw new HttpException({ code: 'FORBIDDEN', message: 'Tenant ID missing from claims' }, 403);
+      }
+
+      const payload = {
+        tenantId: claims.tenantId,
+        courseId: request.courseId,
+        lessonId: request.lessonId,
+        userId: request.userId,
+      };
+
+      const startedAt = Date.now();
+      try {
+        const response = await this.sendRequest<any>(
+          '/v1/classroom-jobs',
+          {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          },
+          requestContext,
+        );
+
+        // Ensure successful warmup returns 202 status: "warming" + jobId
+        this.logger.log(JSON.stringify({ msg: 'openmaic_warmup_new', status: 'warming', durationMs: Date.now() - startedAt }));
+
+        return {
+          status: 'warming',
+          jobId: response.jobId || response.id,
+          pollUrl: `/openmaic/proxy/api/classroom-job/${response.jobId || response.id}`,
+        } as any;
+      } catch (err: any) {
+        // Fallback for timeout / 5xx / network error
+        const status = err instanceof HttpException ? err.getStatus() : 500;
+        if (status >= 500 || err instanceof GatewayTimeoutException || err.name === 'GatewayTimeoutException') {
+          return {
+            status: 'fallback',
+            fallback: true,
+            reason: 'upstream_unavailable',
+            embedUrl: null,
+          } as any;
+        }
+        throw err;
+      }
+    }
+
     if (!request.stageId || !request.topic) {
       throw new BadRequestException('Missing required fields: stageId, topic');
     }
@@ -81,6 +140,34 @@ export class OpenMaicService {
     );
 
     return processedResponse;
+  }
+
+  getEmbedUrl(claims: GatewayClaims, courseId: string, lessonId: string) {
+    if (!claims.tenantId) {
+      throw new HttpException({ code: 'FORBIDDEN', message: 'Missing tenantId' }, 403);
+    }
+
+    const tenantId = claims.tenantId;
+    const userId = claims.userId;
+    const exp = Math.floor(Date.now() / 1000) + this.config.services.openmaicEmbedTtlSeconds;
+
+    const canonicalString = `tenantId=${tenantId}&userId=${userId}&courseId=${courseId}&lessonId=${lessonId}&exp=${exp}`;
+    const signature = crypto
+      .createHmac('sha256', this.config.services.openmaicEmbedSigningSecret)
+      .update(canonicalString)
+      .digest('hex');
+
+    const gatewayBase = this.config.services.luminaGatewayUrl.replace(/\/+$/, '');
+    const embedUrl = `${gatewayBase}/openmaic/proxy/embed?${canonicalString}&sig=${signature}`;
+
+    return {
+      embedUrl,
+      expiresAt: new Date(exp * 1000).toISOString(),
+    };
+  }
+
+  onModuleDestroy() {
+    this.redis.disconnect();
   }
 
   async getStage(stageId: string, requestContext?: RequestContext): Promise<WarmupClassroomResponse> {
@@ -224,6 +311,29 @@ export class OpenMaicService {
     body?: any,
     request?: FastifyRequest,
   ): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
+    const isJobCacheable = method.toUpperCase() === 'GET' && path.match(/^api\/classroom-job\/([^\/]+)$/);
+    let cacheKey = '';
+
+    if (isJobCacheable) {
+      const match = path.match(/^api\/classroom-job\/([^\/]+)$/);
+      const jobId = match ? match[1] : '';
+      if (jobId) {
+        cacheKey = `openmaic:classroom-job:${jobId}`;
+        try {
+          const cached = await this.redis.get(cacheKey);
+          if (cached) {
+            this.logger.debug(`Cache hit for ${cacheKey}`);
+            return {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+              body: Buffer.from(cached),
+            };
+          }
+        } catch (err) {
+          this.logger.warn(`Redis cache error for ${cacheKey}: ${err}`);
+        }
+      }
+    }
     // 1. Handle Path Mapping (e.g., stages/[id] -> classroom/[id] for UI requests)
     let targetPath = path;
     const isDocumentRequest = headers['accept']?.includes('text/html');
@@ -262,10 +372,34 @@ export class OpenMaicService {
         }
       });
 
+      const resultBuffer = Buffer.from(responseBody);
+
+      if (cacheKey && response.status === 200) {
+        try {
+          const parsed = JSON.parse(resultBuffer.toString('utf8'));
+          if (parsed && (parsed.status === 'succeeded' || parsed.status === 'ready' || parsed.status === 'completed')) {
+            // Normalise response
+            const normalized = {
+              status: parsed.status,
+              result: { classroomId: parsed.classroomId || parsed.result?.classroomId },
+              error: null,
+            };
+            await this.redis.setex(cacheKey, 60, JSON.stringify(normalized));
+            return {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+              body: Buffer.from(JSON.stringify(normalized)),
+            };
+          }
+        } catch (err) {
+          // Parsing failed, don't cache
+        }
+      }
+
       return {
         status: response.status,
         headers: responseHeaders,
-        body: Buffer.from(responseBody),
+        body: resultBuffer,
       };
     } finally {
       clearTimeout(timeout);

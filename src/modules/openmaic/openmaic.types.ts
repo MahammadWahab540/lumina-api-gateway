@@ -1,7 +1,17 @@
 export interface WarmupClassroomRequest {
-  stageId: string;
-  topic: string;
+  // New fields
+  courseId?: string;
+  lessonId?: string;
+  userId?: string;
+
+  // Deprecated old fields (kept for backward compatibility)
+  /** @deprecated */
+  stageId?: string;
+  /** @deprecated */
+  topic?: string;
+  /** @deprecated */
   description?: string;
+
   language?: string;
   options?: Record<string, unknown>;
 }

@@ -75,3 +75,18 @@ docker run --rm -p 3000:3000 --env-file .env lumina-api-gateway
 
 - start command: `npm run start:prod`
 - health check path: `/health`
+
+## New Routes
+
+### OpenMAIC Embed Signed URL
+- **GET** \`/openmaic/embed-url?courseId=...&lessonId=...\`
+- Requires Student role.
+
+### Voice Onboarding
+- **POST** \`/voice/onboarding/start\`
+- **POST** \`/voice/onboarding/events\`
+- **POST** \`/voice/onboarding/end\`
+
+### Added Env Variables
+- \`OPENMAIC_EMBED_SIGNING_SECRET\`
+- \`OPENMAIC_EMBED_TTL_SECONDS\`
