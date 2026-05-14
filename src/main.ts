@@ -97,6 +97,11 @@ async function bootstrap(): Promise<void> {
           "'self'",
           "https://huggingface.co",
           "https://*.huggingface.co",
+          "https://hf.co",
+          "https://*.hf.co",
+          "https://xethub.hf.co",
+          "https://*.xethub.hf.co",
+          "https://cdn-lfs.huggingface.co",
           "https://cdn.jsdelivr.net",
           ...config.security.allowedOrigins
         ],
