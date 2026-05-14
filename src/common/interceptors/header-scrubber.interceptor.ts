@@ -2,7 +2,7 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nes
 import { Observable } from 'rxjs';
 import { FastifyRequest } from 'fastify';
 
-const SENSITIVE_HEADERS = ['x-user-id', 'x-org-id', 'x-user-roles', 'x-user-email'];
+const SENSITIVE_HEADERS = ['x-user-id', 'x-org-id', 'x-user-roles', 'x-user-role', 'x-user-email', 'x-internal-key'];
 
 @Injectable()
 export class HeaderScrubberInterceptor implements NestInterceptor {
