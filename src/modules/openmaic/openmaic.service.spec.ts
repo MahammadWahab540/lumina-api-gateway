@@ -44,6 +44,8 @@ function buildConfig(
       voiceAgentInternalSecret: overrides.voiceAgentInternalSecret || 'voice-agent-secret',
       personalizationServiceUrl: 'http://127.0.0.1:3012',
       proxyTimeoutMs: 1000,
+      openmaicEmbedSigningSecret: 'secret',
+      openmaicEmbedTtlSeconds: 900,
       ...overrides,
     },
     rateLimit: {

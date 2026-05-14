@@ -40,6 +40,8 @@ function buildConfig(overrides: Partial<AppConfig['services']> = {}): AppConfig 
       voiceDiscoveryServiceUrl: 'http://127.0.0.1:8002',
       voiceAgentInternalSecret: 'voice-agent-secret',
       proxyTimeoutMs: 1000,
+      openmaicEmbedSigningSecret: 'secret',
+      openmaicEmbedTtlSeconds: 900,
       ...overrides,
     },
     rateLimit: {

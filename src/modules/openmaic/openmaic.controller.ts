@@ -4,6 +4,8 @@ import { GatewayClaims } from '../auth/auth.types';
 import { OpenMaicService } from './openmaic.service';
 import { WarmupClassroomRequest } from './openmaic.types';
 import { Public } from '../auth/public.decorator';
+import { UseGuards, Query, BadRequestException } from '@nestjs/common';
+import { RequireStudentGuard } from '../auth/require-student.guard';
 
 type GatewayRequest = FastifyRequest & { user: GatewayClaims };
 
@@ -11,7 +13,19 @@ type GatewayRequest = FastifyRequest & { user: GatewayClaims };
 export class OpenMaicController {
   constructor(private readonly openMaicService: OpenMaicService) {}
 
-  @Public()
+@UseGuards(RequireStudentGuard)
+  @Get('embed-url')
+  getEmbedUrl(
+    @Req() request: GatewayRequest,
+    @Query('courseId') courseId: string,
+    @Query('lessonId') lessonId: string,
+  ) {
+    if (!courseId || !lessonId) {
+      throw new BadRequestException('Missing courseId or lessonId');
+    }
+    return this.openMaicService.getEmbedUrl(request.user, courseId, lessonId);
+  }
+
   @Post('warmup')
   @HttpCode(200)
   warmup(@Req() request: GatewayRequest, @Body() body: WarmupClassroomRequest) {

@@ -41,6 +41,8 @@ function buildConfig(): AppConfig {
       voiceAgentInternalSecret: 'voice-agent-secret',
       supabaseServiceRoleKey: 'test-key',
       proxyTimeoutMs: 1000,
+      openmaicEmbedSigningSecret: 'secret',
+      openmaicEmbedTtlSeconds: 900,
     },
     rateLimit: {
       global: { ttlMs: 60000, limit: 100, blockDurationMs: 60000 },

@@ -49,14 +49,27 @@ export class SupabaseStrategy extends PassportStrategy(Strategy, SUPABASE_AUTH_S
       throw new UnauthorizedException('JWT payload is missing subject');
     }
 
+
     const appMetadata = (payload.app_metadata ?? {}) as Record<string, unknown>;
+    const userMetadata = (payload.user_metadata ?? {}) as Record<string, unknown>;
+
     const orgFromRoot = typeof payload.org_id === 'string' ? payload.org_id : undefined;
     const orgFromAppMetadata = typeof appMetadata.org_id === 'string' ? appMetadata.org_id : undefined;
+    const orgId = orgFromRoot ?? orgFromAppMetadata;
+
+    let tenantId: string | undefined;
+    if (typeof payload.tenant_id === 'string') tenantId = payload.tenant_id;
+    else if (typeof appMetadata.tenant_id === 'string') tenantId = appMetadata.tenant_id;
+    else if (typeof userMetadata.tenant_id === 'string') tenantId = userMetadata.tenant_id;
+    else if (typeof payload.org_id === 'string') tenantId = payload.org_id;
+    else if (typeof appMetadata.org_id === 'string') tenantId = appMetadata.org_id;
 
     return {
       userId,
-      orgId: orgFromRoot ?? orgFromAppMetadata,
+      orgId,
+      tenantId,
       roles: toRoleList(payload),
+
       email: typeof payload.email === 'string' ? payload.email : undefined,
       raw: payload,
     };
