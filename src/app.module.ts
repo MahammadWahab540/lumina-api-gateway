@@ -6,6 +6,7 @@ import { RequestIdInterceptor } from './common/interceptors/request-id.intercept
 import { AppConfigurationModule } from './config/config.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
+import { CareerModule } from './modules/career/career.module';
 import { HealthModule } from './modules/health/health.module';
 import { OpenMaicModule } from './modules/openmaic/openmaic.module';
 import { ProxyModule } from './modules/proxy/proxy.module';
@@ -14,7 +15,7 @@ import { VoiceDiscoveryModule } from './modules/voice-discovery/voice-discovery.
 import { VoiceModule } from './modules/voice/voice.module';
 
 @Module({
-  imports: [AppConfigurationModule, AuthModule, RateLimitModule, HealthModule, ProxyModule, OpenMaicModule, VoiceDiscoveryModule, VoiceModule],
+  imports: [AppConfigurationModule, AuthModule, RateLimitModule, HealthModule, ProxyModule, CareerModule, OpenMaicModule, VoiceDiscoveryModule, VoiceModule],
   providers: [
     {
       provide: APP_GUARD,

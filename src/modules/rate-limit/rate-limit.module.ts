@@ -40,6 +40,13 @@ function getPath(context: { switchToHttp: () => { getRequest: () => { raw?: { ur
             skipIf: (context) => !getPath(context).startsWith('/ai'),
           },
           {
+            name: 'career',
+            ttl: config.rateLimit.career.ttlMs,
+            limit: config.rateLimit.career.limit,
+            blockDuration: config.rateLimit.career.blockDurationMs,
+            skipIf: (context) => !getPath(context).startsWith('/career'),
+          },
+          {
             name: 'rest',
             ttl: config.rateLimit.rest.ttlMs,
             limit: config.rateLimit.rest.limit,

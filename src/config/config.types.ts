@@ -25,6 +25,7 @@ export interface ServiceRouteConfig {
   openmaicEmbedSigningSecret: string;
   openmaicEmbedTtlSeconds: number;
   personalizationServiceUrl: string;
+  careerServiceUrl: string;
   internalServiceKey: string;
   luminaGatewayUrl: string;
   voiceDiscoveryServiceUrl: string;
@@ -42,6 +43,7 @@ export interface RateLimitConfig {
   global: RateLimitBucketConfig;
   auth: RateLimitBucketConfig;
   ai: RateLimitBucketConfig;
+  career: RateLimitBucketConfig;
   rest: RateLimitBucketConfig;
   storage: RateLimitBucketConfig;
   openmaic: RateLimitBucketConfig;
