@@ -2,13 +2,20 @@ import { z } from 'zod';
 import { AppConfig, NodeEnv } from './config.types';
 
 const nodeEnvSchema = z.enum(['development', 'test', 'production']);
+const defaultCorsOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://app.pathwisse.com',
+  'https://pathwisse.com',
+  'https://www.pathwisse.com',
+].join(',');
 
 const envSchema = z.object({
   NODE_ENV: nodeEnvSchema.default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   LOG_LEVEL: z.string().trim().min(1).default('info'),
   BODY_LIMIT_MB: z.coerce.number().int().min(1).default(2),
-  CORS_ORIGINS: z.string().trim().default('*'),
+  CORS_ORIGINS: z.string().trim().default(defaultCorsOrigins),
   SUPABASE_JWKS_URI: z.string().url(),
   SUPABASE_JWT_ISSUER: z.string().url(),
   SUPABASE_JWT_AUDIENCE: z.string().trim().min(1),
@@ -35,7 +42,6 @@ const envSchema = z.object({
   VOICE_AGENT_INTERNAL_SECRET: z.string().trim().min(8),
   INTERNAL_SERVICE_KEY: z.string().trim().min(8),
   LUMINA_GATEWAY_URL: z.string().url().default('http://localhost:3000'),
-  ALLOWED_ORIGINS: z.string().trim().default('https://app.pathwisse.com,http://localhost:8080,https://preview--craft-happy-app.lovable.app'),
   PROXY_TIMEOUT_MS: z.coerce.number().int().min(100).default(300000),
   RATE_LIMIT_GLOBAL_TTL: z.coerce.number().int().min(100).default(60000),
   RATE_LIMIT_GLOBAL_LIMIT: z.coerce.number().int().min(1).default(120),
@@ -58,10 +64,36 @@ const envSchema = z.object({
 });
 
 function splitCsv(raw: string): string[] {
-  return raw
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
+  return [...new Set(raw.split(',').map((entry) => entry.trim()).filter((entry) => entry.length > 0))];
+}
+
+function validateCorsOrigins(origins: string[], nodeEnv: NodeEnv): string[] {
+  if (origins.length === 0) {
+    throw new Error('CORS_ORIGINS must contain at least one approved origin');
+  }
+
+  if (nodeEnv === 'production' && origins.includes('*')) {
+    throw new Error('CORS_ORIGINS cannot contain a wildcard in production');
+  }
+
+  for (const origin of origins) {
+    if (origin === '*' && nodeEnv !== 'production') {
+      continue;
+    }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new Error(`CORS_ORIGINS contains an invalid origin: ${origin}`);
+    }
+
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) {
+      throw new Error(`CORS_ORIGINS must contain exact HTTP(S) origins only: ${origin}`);
+    }
+  }
+
+  return origins;
 }
 
 function ensureAbsoluteRoutes(routes: string[]): string[] {
@@ -92,16 +124,16 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
   }
 
   const data = parsed.data;
-  const corsOrigins = splitCsv(data.CORS_ORIGINS);
-  const allowedOrigins = splitCsv(data.ALLOWED_ORIGINS);
+  const nodeEnv = data.NODE_ENV as NodeEnv;
+  const corsOrigins = validateCorsOrigins(splitCsv(data.CORS_ORIGINS), nodeEnv);
   const publicRoutes = ensureAbsoluteRoutes(splitCsv(data.PUBLIC_ROUTES));
 
   return {
-    nodeEnv: data.NODE_ENV as NodeEnv,
+    nodeEnv,
     port: data.PORT,
     logLevel: data.LOG_LEVEL,
     bodyLimitMb: data.BODY_LIMIT_MB,
-    corsOrigins: corsOrigins.length > 0 ? corsOrigins : ['*'],
+    corsOrigins,
     publicRoutes,
     auth: {
       jwksUri: data.SUPABASE_JWKS_URI,
@@ -109,7 +141,7 @@ export function loadConfiguration(env: NodeJS.ProcessEnv): AppConfig {
       audience: data.SUPABASE_JWT_AUDIENCE,
     },
     security: {
-      allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : ['*'],
+      allowedOrigins: corsOrigins,
     },
     redisUrl: data.REDIS_URL,
     services: {
