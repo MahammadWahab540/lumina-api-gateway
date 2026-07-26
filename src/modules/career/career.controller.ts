@@ -98,6 +98,17 @@ export class CareerController {
     reply.status(result.statusCode).send(result.body);
   }
 
+  @Post('opportunities/:id/report')
+  async reportOpportunity(
+    @Req() request: GatewayRequest,
+    @Res() reply: FastifyReply,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const result = await this.careerService.forward(request, 'POST', `/opportunities/${id}/report`, body);
+    reply.status(result.statusCode).send(result.body);
+  }
+
   @Post('opportunities/:id/resume')
   async generateResume(
     @Req() request: GatewayRequest,
