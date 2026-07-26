@@ -58,9 +58,12 @@ function buildConfig(): AppConfig {
 }
 
 describe('CareerService', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('strips spoofed identity headers and forwards trusted auth context headers', async () => {
-    const originalFetch = global.fetch;
-    global.fetch = jest.fn().mockResolvedValue({
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
       status: 200,
       text: async () => JSON.stringify({ ok: true }),
     } as Response);
@@ -68,7 +71,9 @@ describe('CareerService', () => {
     const claims: GatewayClaims = {
       userId: 'trusted-user',
       email: 'user@example.com',
-      roles: ['student'],
+      roles: ['student', 'mentor'],
+      tenantId: 'trusted-tenant',
+      orgId: 'trusted-org',
       raw: {},
     };
 
@@ -80,25 +85,52 @@ describe('CareerService', () => {
         'x-user-id': 'spoofed-user',
         'x-user-email': 'spoofed@example.com',
         'x-user-role': 'admin',
+        'x-user-roles': 'admin,platform_owner',
+        'x-org-id': 'spoofed-org',
+        'x-tenant-id': 'spoofed-tenant',
+        'x-internal-key': 'spoofed-internal-key',
       },
       user: claims,
     } as unknown as FastifyRequest & { user: GatewayClaims };
 
     await service.forward(request, 'GET', '/opportunities');
 
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       new URL('http://career:3013/opportunities'),
       expect.objectContaining({
         headers: expect.objectContaining({
           'x-user-id': 'trusted-user',
           'x-user-email': 'user@example.com',
           'x-user-role': 'student',
+          'x-user-roles': 'student,mentor',
+          'x-org-id': 'trusted-org',
+          'x-tenant-id': 'trusted-tenant',
           'x-request-id': 'req-1',
           'x-internal-key': 'internal-secret',
         }),
       }),
     );
+  });
 
-    global.fetch = originalFetch;
+  it('maps upstream timeouts to a safe 504 response', async () => {
+    const timeout = new Error('sensitive upstream timeout details');
+    timeout.name = 'TimeoutError';
+    jest.spyOn(global, 'fetch').mockRejectedValue(timeout);
+
+    const service = new CareerService(buildConfig());
+    const request = {
+      id: 'req-timeout',
+      headers: {},
+      user: { userId: 'trusted-user', roles: ['student'], raw: {} },
+    } as unknown as FastifyRequest & { user: GatewayClaims };
+
+    await expect(service.forward(request, 'POST', '/discovery/run', {})).resolves.toEqual({
+      statusCode: 504,
+      body: {
+        code: 'CAREER_SERVICE_TIMEOUT',
+        message: 'Career service request timed out',
+        request_id: 'req-timeout',
+      },
+    });
   });
 });
