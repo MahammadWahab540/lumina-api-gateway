@@ -26,6 +26,9 @@ function getRoutePrefix(pathname: string): string {
   if (pathname.startsWith('/health')) {
     return 'health';
   }
+  if (pathname.startsWith('/career')) {
+    return 'career';
+  }
   if (pathname.startsWith('/api')) {
     return 'api';
   }
@@ -34,6 +37,14 @@ function getRoutePrefix(pathname: string): string {
   }
 
   return 'other';
+}
+
+function safeRequestId(value: string | string[] | undefined): string {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (candidate && /^[A-Za-z0-9._:-]{1,128}$/.test(candidate)) {
+    return candidate;
+  }
+  return randomUUID();
 }
 
 async function bootstrap(): Promise<void> {
@@ -46,13 +57,7 @@ async function bootstrap(): Promise<void> {
     trustProxy: true,
     bodyLimit: config.bodyLimitMb * 1024 * 1024,
     requestIdHeader: 'x-request-id',
-    genReqId: (request: IncomingMessage) => {
-      const incoming = request.headers['x-request-id'];
-      if (typeof incoming === 'string' && incoming.trim().length > 0) {
-        return incoming;
-      }
-      return randomUUID();
-    },
+    genReqId: (request: IncomingMessage) => safeRequestId(request.headers['x-request-id']),
   });
 
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
@@ -73,48 +78,46 @@ async function bootstrap(): Promise<void> {
     contentSecurityPolicy: {
       directives: {
         'default-src': ["'self'"],
-        'script-src': [
-          "'self'", 
-          "'unsafe-inline'", 
-          "'unsafe-eval'", 
-          "blob:", 
-          "https://cdn.jsdelivr.net"
-        ],
-        'style-src': [
-          "'self'", 
-          "'unsafe-inline'", 
-          "https://cdn.jsdelivr.net"
-        ],
-        'img-src': ["'self'", "data:", "blob:", ...config.security.allowedOrigins],
+        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'blob:', 'https://cdn.jsdelivr.net'],
+        'style-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+        'img-src': ["'self'", 'data:', 'blob:', ...config.security.allowedOrigins],
         'font-src': [
-          "'self'", 
-          "data:", 
-          "blob:", 
-          "https://frontend-cdn.perplexity.ai",
-          ...config.security.allowedOrigins
+          "'self'",
+          'data:',
+          'blob:',
+          'https://frontend-cdn.perplexity.ai',
+          ...config.security.allowedOrigins,
         ],
         'connect-src': [
           "'self'",
-          "https://huggingface.co",
-          "https://*.huggingface.co",
-          "https://hf.co",
-          "https://*.hf.co",
-          "https://xethub.hf.co",
-          "https://*.xethub.hf.co",
-          "https://cdn-lfs.huggingface.co",
-          "https://cdn.jsdelivr.net",
-          ...config.security.allowedOrigins
+          'https://huggingface.co',
+          'https://*.huggingface.co',
+          'https://hf.co',
+          'https://*.hf.co',
+          'https://xethub.hf.co',
+          'https://*.xethub.hf.co',
+          'https://cdn-lfs.huggingface.co',
+          'https://cdn.jsdelivr.net',
+          ...config.security.allowedOrigins,
         ],
-        'media-src': ["'self'", "blob:", "data:"],
-        'worker-src': ["'self'", "blob:"],
+        'media-src': ["'self'", 'blob:', 'data:'],
+        'worker-src': ["'self'", 'blob:'],
         'frame-ancestors': ["'self'", ...config.security.allowedOrigins],
       },
     },
   });
+
   await fastify.register(cors, {
-    origin: config.security.allowedOrigins.includes('*') ? true : config.security.allowedOrigins,
+    origin: config.corsOrigins.includes('*') ? true : config.corsOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'apikey', 'x-client-info', 'x-request-id'],
+    exposedHeaders: ['x-request-id'],
+    strictPreflight: true,
+    optionsSuccessStatus: 204,
+    maxAge: 600,
   });
+
   await fastify.register(replyFrom, {
     http: {
       requestOptions: {
