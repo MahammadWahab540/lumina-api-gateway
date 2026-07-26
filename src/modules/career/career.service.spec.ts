@@ -34,6 +34,8 @@ function buildConfig(): AppConfig {
       supabaseAnonKey: 'anon-key',
       supabaseServiceRoleKey: 'service-role',
       openmaicServiceUrl: 'http://openmaic:3001',
+      openmaicEmbedSigningSecret: 'signing-secret-placeholder',
+      openmaicEmbedTtlSeconds: 900,
       personalizationServiceUrl: 'http://personalization:3001',
       careerServiceUrl: 'http://career:3013',
       internalServiceKey: 'internal-secret',
