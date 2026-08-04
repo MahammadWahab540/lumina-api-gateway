@@ -6,6 +6,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';import Redis from 'ioredis';
 import * as crypto from 'crypto';
 import { APP_CONFIG } from '../../config/config.constants';
@@ -35,6 +36,19 @@ export class OpenMaicService implements OnModuleDestroy {
   private readonly logger = new Logger(OpenMaicService.name);
   private readonly supabaseServiceRoleKey: string | null;
   private readonly redis: Redis;
+
+  /** Wire format of `:audioId` — base64url, no padding, no path separators. */
+  private static readonly BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
+  /** Decoded audio id must be a safe relative upstream sub-path. */
+  private static readonly SAFE_RELATIVE_PATH_PATTERN = /^[A-Za-z0-9/_.-]+$/;
+  private static readonly AUDIO_PASSTHROUGH_HEADERS = [
+    'content-length',
+    'content-range',
+    'accept-ranges',
+    'cache-control',
+    'etag',
+    'last-modified',
+  ];
 
   constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {
     this.redis = new Redis(this.config.redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
@@ -248,6 +262,109 @@ export class OpenMaicService implements OnModuleDestroy {
     const normalizedBase = this.config.services.openmaicServiceUrl.replace(/\/+$/, '');
     const normalizedPath = pathname.replace(/^\/+/, '').replace(/\/+$/, '');
     return `${normalizedBase}/${normalizedPath}`;
+  }
+
+  /**
+   * Streams a single audio file from the OpenMAIC upstream through this gateway,
+   * so the browser only ever loads audio from the gateway's own origin (no CSP
+   * media-src allowlisting of the upstream OpenMAIC domain required).
+   *
+   * `audioId` is a base64url-encoded upstream sub-path (e.g.
+   * `api/classroom-media/{classroomId}/audio/{filename}`), as produced by
+   * OpenMAIC's `audioServingUrl()` helper. Range/If-Range are forwarded so
+   * `<audio>` seeking works; the upstream response is only forwarded through
+   * when it succeeds and is actually audio — anything else (404, 5xx, an
+   * HTML/JSON error body, a content-type that isn't audio/*) becomes a safe,
+   * normalized gateway error instead of being played back or leaked verbatim.
+   */
+  async streamAudio(
+    audioId: string,
+    requestHeaders: Record<string, string | string[] | undefined>,
+  ): Promise<{ status: number; headers: Record<string, string>; body: Buffer }> {
+    const decodedPath = this.decodeAudioId(audioId);
+    const targetUrl = this.buildTargetUrl(decodedPath);
+
+    const forwardHeaders: Record<string, string> = {};
+    const range = requestHeaders['range'];
+    if (typeof range === 'string') forwardHeaders['range'] = range;
+    const ifRange = requestHeaders['if-range'];
+    if (typeof ifRange === 'string') forwardHeaders['if-range'] = ifRange;
+
+    const secret = this.config.services.internalServiceKey;
+    if (secret) {
+      forwardHeaders['x-api-key'] = secret;
+      forwardHeaders['x-internal-secret'] = secret;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.config.services.proxyTimeoutMs);
+
+    let response: Response;
+    try {
+      response = await fetch(targetUrl, { headers: forwardHeaders, signal: controller.signal });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new GatewayTimeoutException('OpenMAIC audio upstream timed out');
+      }
+      throw new BadGatewayException({
+        code: 'AUDIO_UPSTREAM_UNREACHABLE',
+        message: 'Unable to reach the audio upstream',
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (response.status === 404) {
+      throw new NotFoundException({ code: 'AUDIO_NOT_FOUND', message: 'Audio not found' });
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok || !contentType.toLowerCase().startsWith('audio/')) {
+      this.logger.warn(
+        `Rejected non-audio upstream response for ${targetUrl}: status=${response.status} content-type=${contentType}`,
+      );
+      throw new BadGatewayException({
+        code: 'AUDIO_UPSTREAM_INVALID_RESPONSE',
+        message: 'Audio upstream returned an unexpected response',
+      });
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const headers: Record<string, string> = { 'content-type': contentType };
+    for (const header of OpenMaicService.AUDIO_PASSTHROUGH_HEADERS) {
+      const value = response.headers.get(header);
+      if (value) headers[header] = value;
+    }
+    if (!headers['accept-ranges']) headers['accept-ranges'] = 'bytes';
+
+    return { status: response.status, headers, body: Buffer.from(arrayBuffer) };
+  }
+
+  /**
+   * `audioId` is base64url (not percent-encoding) so it's always a single,
+   * unambiguous path segment — `%2F`-encoded slashes inside a path segment
+   * are notoriously mangled or rejected by proxies/CDNs sitting in front of
+   * this gateway, so we avoid embedding path separators in the wire format
+   * entirely.
+   */
+  private decodeAudioId(audioId: string): string {
+    if (!audioId || !OpenMaicService.BASE64URL_PATTERN.test(audioId)) {
+      throw new BadRequestException({ code: 'INVALID_AUDIO_ID', message: 'Malformed audio id' });
+    }
+
+    const decoded = Buffer.from(audioId, 'base64url').toString('utf8');
+    const isAbsoluteUrl = /^[a-z][a-z0-9+.-]*:/i.test(decoded);
+    if (
+      decoded.length === 0 ||
+      decoded.includes('..') ||
+      decoded.startsWith('/') ||
+      isAbsoluteUrl ||
+      !OpenMaicService.SAFE_RELATIVE_PATH_PATTERN.test(decoded)
+    ) {
+      throw new BadRequestException({ code: 'INVALID_AUDIO_ID', message: 'Malformed audio id' });
+    }
+
+    return decoded;
   }
 
   private buildRequestHeaders(

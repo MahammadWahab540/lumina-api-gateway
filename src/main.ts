@@ -9,6 +9,7 @@ import { IncomingMessage } from 'http';
 import { AppModule } from './app.module';
 import { loadConfiguration } from './config/configuration';
 import { installOpenMaicHmrProxy } from './modules/openmaic/hmr-proxy';
+import { buildLiveCspDirectives, safeOrigin } from './security/live-csp';
 
 function getRoutePrefix(pathname: string): string {
   if (pathname.startsWith('/auth')) {
@@ -38,6 +39,14 @@ function getRoutePrefix(pathname: string): string {
 
 async function bootstrap(): Promise<void> {
   const config = loadConfiguration(process.env);
+
+  // The OpenMAIC classroom UI plays pre-generated TTS audio (KittenTTS, etc.)
+  // directly from the OpenMAIC service's own origin (e.g.
+  // https://openmaic-mcp-claude-production.up.railway.app/api/classroom-media/...),
+  // which is cross-origin from this gateway. It must be explicitly allowed in
+  // media-src (audio/video element loading) and connect-src (fetch/XHR) or the
+  // browser silently blocks playback under CSP.
+  const openmaicOrigin = safeOrigin(config.services.openmaicServiceUrl);
 
   const adapter = new FastifyAdapter({
     logger: {
@@ -71,44 +80,7 @@ async function bootstrap(): Promise<void> {
 
   await fastify.register(helmet, {
     contentSecurityPolicy: {
-      directives: {
-        'default-src': ["'self'"],
-        'script-src': [
-          "'self'", 
-          "'unsafe-inline'", 
-          "'unsafe-eval'", 
-          "blob:", 
-          "https://cdn.jsdelivr.net"
-        ],
-        'style-src': [
-          "'self'", 
-          "'unsafe-inline'", 
-          "https://cdn.jsdelivr.net"
-        ],
-        'img-src': ["'self'", "data:", "blob:", ...config.security.allowedOrigins],
-        'font-src': [
-          "'self'", 
-          "data:", 
-          "blob:", 
-          "https://frontend-cdn.perplexity.ai",
-          ...config.security.allowedOrigins
-        ],
-        'connect-src': [
-          "'self'",
-          "https://huggingface.co",
-          "https://*.huggingface.co",
-          "https://hf.co",
-          "https://*.hf.co",
-          "https://xethub.hf.co",
-          "https://*.xethub.hf.co",
-          "https://cdn-lfs.huggingface.co",
-          "https://cdn.jsdelivr.net",
-          ...config.security.allowedOrigins
-        ],
-        'media-src': ["'self'", "blob:", "data:"],
-        'worker-src': ["'self'", "blob:"],
-        'frame-ancestors': ["'self'", ...config.security.allowedOrigins],
-      },
+      directives: buildLiveCspDirectives(config.security.allowedOrigins, openmaicOrigin),
     },
   });
   await fastify.register(cors, {

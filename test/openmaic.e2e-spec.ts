@@ -134,6 +134,7 @@ function buildValidEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     RATE_LIMIT_OPENMAIC_TTL: '60000',
     RATE_LIMIT_OPENMAIC_LIMIT: '1000',
     INTERNAL_SERVICE_KEY: 'test-internal-key',
+    VOICE_AGENT_INTERNAL_SECRET: 'test-voice-agent-secret',
     PUBLIC_ROUTES: '/auth/login,/auth/refresh',
     ...overrides,
   };
@@ -188,6 +189,37 @@ describe('OpenMAIC gateway e2e', () => {
             jobId: 'job-2',
           }),
         );
+        return;
+      }
+
+      if (req.method === 'GET' && req.url === '/api/classroom-media/room-1/audio/clip.wav') {
+        const full = Buffer.from([10, 20, 30, 40]);
+        const range = req.headers.range;
+        if (typeof range === 'string') {
+          const match = /^bytes=(\d+)-(\d+)$/.exec(range);
+          if (match) {
+            const start = Number(match[1]);
+            const end = Number(match[2]);
+            const chunk = full.subarray(start, end + 1);
+            res.statusCode = 206;
+            res.setHeader('content-type', 'audio/wav');
+            res.setHeader('content-range', `bytes ${start}-${end}/${full.length}`);
+            res.setHeader('accept-ranges', 'bytes');
+            res.end(chunk);
+            return;
+          }
+        }
+        res.statusCode = 200;
+        res.setHeader('content-type', 'audio/wav');
+        res.setHeader('content-length', String(full.length));
+        res.end(full);
+        return;
+      }
+
+      if (req.method === 'GET' && req.url === '/api/classroom-media/room-1/audio/broken.wav') {
+        res.statusCode = 500;
+        res.setHeader('content-type', 'text/html; charset=utf-8');
+        res.end('<html><body>boom</body></html>');
         return;
       }
 
@@ -314,6 +346,61 @@ describe('OpenMAIC gateway e2e', () => {
       status: 'warming',
       stageId: 'stage-1',
       jobId: 'job-2',
+    });
+  });
+
+  describe('GET /openmaic/proxy/audio/:audioId', () => {
+    const encode = (relativePath: string) => Buffer.from(relativePath, 'utf8').toString('base64url');
+
+    it('streams valid audio through unauthenticated, with the upstream content-type and content-length', async () => {
+      const response = await request(app.getHttpServer()).get(
+        `/openmaic/proxy/audio/${encode('api/classroom-media/room-1/audio/clip.wav')}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe('audio/wav');
+      expect(response.headers['content-length']).toBe('4');
+      expect(Buffer.from(response.body)).toEqual(Buffer.from([10, 20, 30, 40]));
+    });
+
+    it('forwards a Range request and returns a 206 partial response', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/openmaic/proxy/audio/${encode('api/classroom-media/room-1/audio/clip.wav')}`)
+        .set('range', 'bytes=1-2');
+
+      expect(response.status).toBe(206);
+      expect(response.headers['content-range']).toBe('bytes 1-2/4');
+      expect(response.headers['accept-ranges']).toBe('bytes');
+      expect(Buffer.from(response.body)).toEqual(Buffer.from([20, 30]));
+    });
+
+    it('surfaces an upstream 404 as a normalized gateway 404 instead of an opaque proxy error', async () => {
+      const response = await request(app.getHttpServer()).get(
+        `/openmaic/proxy/audio/${encode('api/classroom-media/room-1/audio/missing.wav')}`,
+      );
+
+      expect(response.status).toBe(404);
+      expect(response.body).toMatchObject({ code: 'AUDIO_NOT_FOUND' });
+    });
+
+    it('normalizes an upstream HTML error page into a safe JSON error instead of serving it as audio', async () => {
+      const response = await request(app.getHttpServer()).get(
+        `/openmaic/proxy/audio/${encode('api/classroom-media/room-1/audio/broken.wav')}`,
+      );
+
+      expect(response.status).toBe(502);
+      expect(response.headers['content-type']).toContain('application/json');
+      expect(response.body).toMatchObject({ code: 'AUDIO_UPSTREAM_INVALID_RESPONSE' });
+      expect(response.text).not.toContain('<html>');
+    });
+
+    it('rejects a malformed audio id before contacting the upstream', async () => {
+      const response = await request(app.getHttpServer()).get(
+        '/openmaic/proxy/audio/api%2Fclassroom-media%2Froom-1%2Faudio%2Fclip.wav',
+      );
+
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({ code: 'INVALID_AUDIO_ID' });
     });
   });
 });

@@ -82,4 +82,28 @@ describe('OpenMaicController', () => {
       request,
     );
   });
+
+  it('streams the audio proxy result through with the upstream status and headers', async () => {
+    const openMaicService = {
+      streamAudio: jest.fn().mockResolvedValue({
+        status: 206,
+        headers: { 'content-type': 'audio/wav', 'content-range': 'bytes 0-1/4' },
+        body: Buffer.from([1, 2]),
+      }),
+    } as unknown as jest.Mocked<Pick<OpenMaicService, 'streamAudio'>>;
+
+    const controller = new OpenMaicController(openMaicService as unknown as OpenMaicService);
+
+    const status = jest.fn().mockReturnThis();
+    const headers = jest.fn().mockReturnThis();
+    const send = jest.fn().mockReturnThis();
+    const reply = { status, headers, send } as any;
+
+    await (controller as any).proxyAudio(request, reply, 'YXVkaW8vY2xpcC53YXY');
+
+    expect(openMaicService.streamAudio).toHaveBeenCalledWith('YXVkaW8vY2xpcC53YXY', request.headers);
+    expect(status).toHaveBeenCalledWith(206);
+    expect(headers).toHaveBeenCalledWith({ 'content-type': 'audio/wav', 'content-range': 'bytes 0-1/4' });
+    expect(send).toHaveBeenCalledWith(Buffer.from([1, 2]));
+  });
 });

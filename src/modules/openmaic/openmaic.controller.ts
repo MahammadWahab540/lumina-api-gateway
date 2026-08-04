@@ -47,6 +47,19 @@ export class OpenMaicController {
     return this.openMaicService.regenerate(request.user, stageId, body, request);
   }
 
+  // Registered before the `proxy/*` catch-all so this specific route wins the match.
+  @Public()
+  @Get('proxy/audio/:audioId')
+  async proxyAudio(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+    @Param('audioId') audioId: string,
+  ) {
+    const result = await this.openMaicService.streamAudio(audioId, request.headers as any);
+
+    reply.status(result.status).headers(result.headers).send(result.body);
+  }
+
   @Public()
   @All('proxy/*')
   async proxy(
