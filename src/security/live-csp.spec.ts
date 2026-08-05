@@ -18,7 +18,7 @@ describe('buildLiveCspDirectives', () => {
   it('omits the OpenMAIC origin entirely when it cannot be determined', () => {
     const directives = buildLiveCspDirectives(allowedOrigins, undefined);
 
-    expect(directives['media-src']).toEqual(["'self'", 'blob:', 'data:']);
+    expect(directives['media-src']).toEqual(["'self'", 'blob:', 'data:', 'https:']);
     expect(directives['connect-src']).not.toContain(undefined);
   });
 

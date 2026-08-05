@@ -32,7 +32,7 @@ export function buildLiveCspDirectives(
       ...allowedOrigins,
       ...extraOrigin,
     ],
-    'media-src': ["'self'", 'blob:', 'data:', ...extraOrigin],
+    'media-src': ["'self'", 'blob:', 'data:', 'https:', ...extraOrigin],
     'worker-src': ["'self'", 'blob:'],
     'frame-ancestors': ["'self'", ...allowedOrigins],
   };
